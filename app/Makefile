@@ -1,5 +1,5 @@
 .PHONY: build migrate_up migrate_down migrate_create run_local run_cli stop_local swagger test integration_test install \
-	run_db stop_db run_mongo stop_mongo mongo_seed run_server
+	run_db stop_db run_mongo stop_mongo mongo_seed run_server seed_db check_roles index_research
 
 POSTGRES_CONTAINER := join_up_db
 POSTGRES_IMAGE := postgres:16
@@ -8,6 +8,10 @@ POSTGRES_PASSWORD := postgres
 POSTGRES_DB := join_up
 POSTGRES_PORT := 5433
 POSTGRES_HOST := localhost
+POSTGRES_APP_USER := joinup_user
+POSTGRES_APP_PASSWORD := user
+POSTGRES_GUEST_PASSWORD := guest
+POSTGRES_ADMIN_PASSWORD := admin
 
 MONGO_CONTAINER := join_up_mongo
 MONGO_IMAGE := mongo:7
@@ -44,7 +48,7 @@ ENVS := POSTGRES_USER=$(POSTGRES_USER) \
 	PROD=$(PROD)
 	
 run_server:
-	@$(ENVS) go run ./cmd/server
+	@$(ENVS) POSTGRES_USER=$(POSTGRES_APP_USER) POSTGRES_PASSWORD=$(POSTGRES_APP_PASSWORD) go run ./cmd/server
 
 run_cli:
 	@go run ./cmd/cli
@@ -83,6 +87,20 @@ migrate_down:
 
 migrate_create:
 	@go run github.com/pressly/goose/v3/cmd/goose@latest -dir $(MIGRATIONS_DIR) create $(NAME) sql
+
+seed_db:
+	@$(ENVS) POSTGRES_USER=joinup_admin POSTGRES_PASSWORD=$(POSTGRES_ADMIN_PASSWORD) python3 scripts/seed.py
+
+check_roles:
+	@POSTGRES_CONTAINER=$(POSTGRES_CONTAINER) \
+		POSTGRES_DB=$(POSTGRES_DB) \
+		POSTGRES_GUEST_PASSWORD=$(POSTGRES_GUEST_PASSWORD) \
+		POSTGRES_APP_PASSWORD=$(POSTGRES_APP_PASSWORD) \
+		POSTGRES_ADMIN_PASSWORD=$(POSTGRES_ADMIN_PASSWORD) \
+		./scripts/check_roles.sh
+
+index_research:
+	@$(ENVS) python3 scripts/index_research.py
 
 install:
 	go mod tidy

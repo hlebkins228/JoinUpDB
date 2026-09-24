@@ -1,0 +1,305 @@
+\usepackage{tikz}
+\usepackage{pdfpages}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{caption}
+\usetikzlibrary{fit, calc, positioning, matrix, arrows.meta, shadows}
+
+% Вариант 1: Создание команды \highlight
+\newcommand{\highlight}[1]{\colorbox{yellow!50}{#1}}
+
+\renewcommand{\makethesistitle}[7]
+{
+	\documentmeta{РПЗ к ВКР}{#4}{}{#3}
+	
+	\begin{titlepage}
+		\centering
+		
+		\titlepageheader{#1}{#2}
+		\vspace{15.8mm}
+		
+		\titlepagenotetitle{К ВЫПУСКНОЙ КВАЛИФИКАЦИОННОЙ РАБОТЕ}{#3}
+		\vfill
+		
+		\titlepageauthors{#4}{Руководитель ВКР}{#5}{#6}{#7}
+		\vspace{14mm}
+		
+		\text{{\the\year} г.}
+	\end{titlepage}
+	
+	\setcounter{page}{2}
+}
+
+% Создание шапки титульной страницы
+\renewcommand{\titlepageheader}[2]
+{
+	\begin{wrapfigure}[7]{l}{0.14\linewidth}
+		\vspace{3.4mm}
+		\hspace{-8mm}
+		\includegraphics[width=0.89\linewidth]{bmstu-logo}
+	\end{wrapfigure}
+	
+	{
+		\singlespacing \small
+		Министерство науки и высшего образования Российской Федерации \\
+		Федеральное государственное автономное образовательное учреждение \\
+		высшего образования \\
+		<<Московский государственный технический университет \\
+		имени Н.Э.~Баумана \\
+		(национальный исследовательский университет)>> \\
+		(МГТУ им. Н.Э.~Баумана) \\
+	}
+	
+	\vspace{-4.2mm}
+	\vhrulefill{0.9mm} \\
+	\vspace{-7mm}
+	\vhrulefill{0.2mm} \\
+	\vspace{2.8mm}
+	
+	{
+		\small
+		ФАКУЛЬТЕТ ИУ \longunderline{<<#1>>} \\
+		\vspace{3.3mm}
+		КАФЕДРА ИУ7 \longunderline{<<#2>>} \\
+	}
+}
+
+% Установка заголовков РПЗ
+\renewcommand{\titlepagenotetitle}[2]
+{
+	{
+		\LARGE \bfseries
+		РАСЧЕТНО-ПОЯСНИТЕЛЬНАЯ ЗАПИСКА \\
+	}
+	\vspace{5mm}
+	{
+		\Large \itshape
+		#1 \\
+		\vspace{5mm}
+		НА ТЕМУ: \\
+		\vspace{5mm}
+		<<#2>> \\
+	}
+}
+
+% Создание страницы определений
+\renewenvironment{definitions}
+{
+	\chapter*{ОПРЕДЕЛЕНИЯ}
+	\addcontentsline{toc}{chapter}{ОПРЕДЕЛЕНИЯ}
+	
+	В настоящей расчетно-пояснительной записке применяют следующие термины с соответствующими определениями.
+	
+	\begin{description}[leftmargin=0pt]
+	}
+	{
+	\end{description}
+}
+
+% Создание страницы обозначений и сокращений
+\renewenvironment{abbreviations}
+{
+	\chapter*{ОБОЗНАЧЕНИЯ И СОКРАЩЕНИЯ}
+	\addcontentsline{toc}{chapter}{ОБОЗНАЧЕНИЯ И СОКРАЩЕНИЯ}
+	
+	В настоящей расчетно-пояснительной записке применяют следующие сокращения и обозначения.
+	
+	\begin{description}[leftmargin=0pt]
+	}
+	{
+	\end{description}
+}
+
+\RequirePackage{enumitem}
+\newcommand{\abbreviation}[2]
+{
+	\item \noindent #1 --- #2
+}
+
+\newcommand{\ssr}[1]
+{
+	\chapter{#1}
+	\addcontentsline{toc}{chapter}{#1}  
+}
+
+\newcommand{\ssrno}[1]
+{
+	\chapter*{#1}
+	\addcontentsline{toc}{chapter}{#1}  
+}
+
+
+% Переопределение формата даты обращения
+\DeclareFieldFormat{urldate}
+{%
+	(дата~обращения:%
+	\addspace
+	\iffieldundef{urlday}{}{\ifnumless{\thefield{urlday}}{10}{0\thefield{urlday}}{\thefield{urlday}}%
+		\adddot
+		\iffieldundef{urlmonth}{}{\ifnumless{\thefield{urlmonth}}{10}{0\thefield{urlmonth}}{\thefield{urlmonth}}%
+			\adddot
+			\thefield{urlyear}}})
+}
+
+% Переопределение списков
+\setlist[itemize]{label=---}
+
+% Команды для различных типов слоев
+\newcommand{\convlayer}[4][]{
+	% Сверточный слой
+	\foreach \i in {0,...,#4} {
+		\node[layer, convcolor, right=2cm of #2, yshift=\i*(-6pt)+(#4*3pt), xshift=\i*(-6pt)+(#4*3pt), #1] (#3\i) {};
+	}
+}
+
+\newcommand{\poollayer}[4][]{
+	% Подвыборочный слой
+	\foreach \i in {0,...,#4} {
+		\node[smalllayer, poolcolor, right=2.5cm of #2, yshift=\i*(-6pt)+(#4*3pt), xshift=\i*(-6pt)+(#4*3pt), #1] (#3\i) {};
+	}
+}
+
+\newcommand{\fclayer}[4][]{
+	% Полносвязный слой
+	\foreach \i in {0,...,#4} {
+		\node[fclayer, fccolor, right=2.75cm of #2, yshift=\i*(-6pt)+(#4*3pt), xshift=\i*(-6pt)+(#4*3pt), #1] (#3\i) {};
+	}
+}
+
+% Команда для капсульных слоев
+\newcommand{\capsulelayer}[4][]{
+	% Капсульный слой
+	\foreach \i in {0,...,#4} {
+		\node[layer, capsulecolor, right=2.5cm of #2, yshift=\i*(-6pt)+(#4*3pt), xshift=\i*(-6pt)+(#4*3pt), #1] (#3\i) {};
+	}
+}
+
+% Команда для капсульных слоев
+\newcommand{\attentionlayer}[4][]{
+	% Капсульный слой
+	\foreach \i in {0,...,#4} {
+		\node[layer, attentioncolor, right=2.5cm of #2, yshift=\i*(-6pt)+(#4*3pt), xshift=\i*(-6pt)+(#4*3pt), #1] (#3\i) {};
+	}
+}
+
+\newcolumntype{Y}{>{\centering\arraybackslash}X}
+
+\makeatletter
+% === Новое определение \@dottedtocline (без выключки по ширине) ===
+\def\@dottedtocline#1#2#3#4#5{%
+	\ifnum #1>\c@tocdepth \else
+	\vskip \z@ \@plus.2\p@
+	{\leftskip #2\relax
+		\rightskip 0pt plus 1fil         % <--- левый край: правый отступ с бесконечной растяжимостью
+		\parfillskip 0pt                 % <--- запрет растягивания последней строки
+		\parindent #2\relax\@afterindenttrue
+		\interlinepenalty\@M
+		\leavevmode
+		\@tempdima #3\relax
+		\advance\leftskip \@tempdima \null\nobreak\hskip -\leftskip
+		{#4}\nobreak
+		\leaders\hbox{$\m@th \mkern \@dotsep mu\hbox{.}\mkern \@dotsep mu$}\hfill
+		\nobreak
+		\hb@xt@\@pnumwidth{\hfil\normalfont \normalcolor #5%
+			\kern-\p@\kern\p@}%
+		\par}%
+	\fi}
+
+% === Главы (с полужирным шрифтом) ===
+\renewcommand*{\l@chapter}[2]{%
+	\ifnum \c@tocdepth>\m@ne
+	\addpenalty{-\@highpenalty}
+	\vskip 1em \@plus.2em
+	\@dottedtocline{0}{0pt}{1.5em}{\bfseries #1}{\bfseries #2}%
+	\fi}
+
+% === Разделы ===
+\renewcommand*{\l@section}[2]{%
+	\ifnum \c@tocdepth>\z@
+	\addpenalty\@secpenalty
+	\vskip 0 \@plus\p@
+	\@dottedtocline{1}{1.5em}{2.3em}{#1}{#2}%
+	\fi}
+
+% === Подразделы ===
+\renewcommand*{\l@subsection}[2]{%
+	\ifnum \c@tocdepth>\@ne
+	\addpenalty\@secpenalty
+	\vskip 0 \@plus\p@
+	\@dottedtocline{2}{3.8em}{3.2em}{#1}{#2}%
+	\fi}
+\makeatother
+
+% === Содержание с запретом переносов ===
+\renewcommand{\maketableofcontents}
+{
+	\renewcommand\contentsname{СОДЕРЖАНИЕ}
+	\bgroup
+	\hyphenpenalty=10000
+	\exhyphenpenalty=10000
+	\tableofcontents
+	\egroup
+}
+
+%% bmstu_defabbr.sty
+%% Copyright 2023 Mikael Novikov
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   http://www.latex-project.org/lppl.txt
+% and version 1.3 or later is part of all distributions of LaTeX
+% version 2005/12/01 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Mikael Novikov.
+%
+% This work consists of all files listed in manifest.txt.
+
+% Создание элемента
+\RequirePackage{enumitem}
+\renewcommand{\definition}[2]
+{
+	\item[---] \noindent #1 -- #2
+}
+
+% Создание элемента
+\RequirePackage{enumitem}
+\renewcommand{\abbreviation}[2]
+{
+	\item[---] \noindent #1 -- #2
+}
+
+% Создание страницы определений
+\renewenvironment{definitions}
+{
+	\chapter*{ОПРЕДЕЛЕНИЯ}
+	\addcontentsline{toc}{chapter}{ОПРЕДЕЛЕНИЯ}
+	
+	В настоящей расчетно-пояснительной записке применяют следующие термины с соответствующими определениями.
+	
+	\begin{itemize}[leftmargin=19pt]
+	}
+	{
+	\end{itemize}
+}
+
+% Создание страницы обозначений и сокращений
+\renewenvironment{abbreviations}
+{
+	\chapter*{ОБОЗНАЧЕНИЯ И СОКРАЩЕНИЯ}
+	\addcontentsline{toc}{chapter}{ОБОЗНАЧЕНИЯ И СОКРАЩЕНИЯ}
+	
+	В настоящей расчетно-пояснительной записке применяют следующие сокращения и обозначения.
+	
+	\begin{itemize}[leftmargin=19pt]
+	}
+	{
+	\end{itemize}
+}
+
+\usepackage{titlesec} % уже подключается классом, но повторная загрузка не страшна
+\titleformat{name=\chapter,numberless}[block]{}{}{0pt}{\large\bfseries\centering}
+\titlespacing{name=\chapter,numberless}{0pt}{-22pt}{10pt}

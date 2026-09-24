@@ -10,6 +10,7 @@
 - Опирайся на существующий код, сохраняй его стиль. Не добавляй проверки для очевидно невозможных ситуаций, очевидные комментарии и docstrings без запроса.
 - Не исправляй попутно известные особенности, перечисленные ниже: они описывают состояние проекта, а не список поручений.
 - Перед изменениями проверяй рабочее дерево; не перезаписывай чужие изменения и не нормализуй окончания строк во всём проекте.
+- Триггер удаления, массовое учебное наполнение, роли БД и исследование индексов реализуются только для PostgreSQL. Для MongoDB аналоги не добавлять.
 
 ## Назначение и стек
 
@@ -39,6 +40,7 @@ JoinUp помогает искать компанию для досуга: ре�
 | `internal/exceptions/exceptions.go` | Общие ошибки для `errors.Is`; HTTP-сообщения отдельно в `handlers/message.go`. |
 | `internal/utils/` | Извлечение пользователя из Echo-контекста; подпакет `jwt` подписывает и проверяет токены. |
 | `migrations/` | SQL Goose с Up/Down; `runner.go` встраивает `*.sql` через `go:embed`. |
+| `scripts/` | Наполнение PostgreSQL, настройка и проверка ролей, исследование поискового индекса. |
 
 Поток запроса: маршрут → middleware → handler → service → repository. Интерфейсы определены на стороне потребителей. Сервисы уже зависят от `controller/dto`: не считай их полностью независимым от DTO доменным слоем и не перестраивай архитектуру без задачи. Зависимости передаются вручную через `New...`, обычно конструкторы возвращают значение, а вызывающая сторона передаёт указатель.
 
@@ -98,7 +100,7 @@ JWT подписывается HS256, живёт 2 часа, содержит `U
 
 Выбор `postgres`/`mongo` задаётся в YAML и применяется в `cmd/server/main.go`. При изменении общего контракта учитывай обе реализации и существующие моки; не делай случайно рабочим только один backend.
 
-PostgreSQL: таблицы `users`, `event`, `location`, `image`, `member`, `category`, `event_category`, `review`; неиспользуемые API таблицы `preset`, `subscribe`. Локация отдельная, участники и категории связаны таблицами. Создатель, участники и категории догружаются репозиторием, для списков — пакетными запросами. Уникальны логин, пара участник/событие, пара событие/категория и пара событие/автор отзыва. Изменения схемы оформляются новой Goose-миграцией. Сервер сам миграции PostgreSQL не запускает.
+PostgreSQL: таблицы `users`, `event`, `location`, `image`, `member`, `category`, `event_category`, `review`, `event_deletion_log`; неиспользуемые API таблицы `preset`, `subscribe`. Локация отдельная, участники и категории связаны таблицами. Создатель, участники и категории догружаются репозиторием, для списков — пакетными запросами. Уникальны логин, пара участник/событие, пара событие/категория и пара событие/автор отзыва. Мягкое удаление события записывается PostgreSQL-триггером в `event_deletion_log`. Для поиска неудалённых событий по городу и дате предусмотрен частичный индекс `event_search_city_date_idx`. Изменения схемы оформляются новой Goose-миграцией. Сервер сам миграции PostgreSQL не запускает.
 
 MongoDB: коллекции `users`, `events`, `images`, `reviews`, `categories`, `counters`. ID целочисленные, выдаются `nextID` через `$inc`, не ObjectID. В событии вложены локация, создатель, участники и категории; в отзыве вложен автор. При старте создаются уникальные индексы логина и пары событие/автор отзыва, выполняется заполнение категорий. Для транзакций нужен replica set; `make run_mongo` настраивает `rs0`.
 
@@ -125,7 +127,7 @@ logging:
 Допустимы `db: postgres|mongo`, `logging.type: dev|prod`; все три настройки обязательны. Секрет выше — заглушка. `ReadConfig` сейчас печатает конфигурацию целиком, поэтому не копируй вывод с реальным секретом в отчёты.
 
 - Сервер требует `SERVER_HOST`, `SERVER_PORT`; `make run_server` задаёт `localhost:8080` и переменные подключения.
-- PostgreSQL требует `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`. Локальные значения Makefile: `postgres/postgres`, `localhost:5433`, БД `join_up`.
+- PostgreSQL требует `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`. Миграции запускаются локально как `postgres/postgres`, `make seed_db` — как `joinup_admin/admin`, `make run_server` — как `joinup_user/user`. Роли создаются миграцией `20260924002000_roles.sql` при `make migrate_up`; отдельной настройки нет.
 - MongoDB использует `MONGO_USER`, `MONGO_PASSWORD`, `MONGO_HOST`, `MONGO_PORT`, `MONGO_DB`. Без host/port/db значения по умолчанию — `localhost`, `27017`, `join_up`; авторизация включается при наличии обоих user/password. Makefile задаёт локальные `mongo/mongo`.
 - CLI использует `JOINUP_BACKEND_URL`, по умолчанию `http://localhost:8080`.
 
@@ -141,8 +143,15 @@ logging:
 | `make run_mongo`, `make stop_mongo` | MongoDB 7 в Docker, контейнер `join_up_mongo`. |
 | `make migrate_up`, `make migrate_down` | Применить миграции PostgreSQL или откатить последнюю. |
 | `make migrate_create NAME=change_name` | Создать SQL-миграцию. |
+| `make seed_db` | Через `python3` создать 5001 пользователя, по 1–3 события, участия, отзывы и подписки. Заменяет учебные данные. Зависимости: `pip install -r scripts/requirements.txt`. |
+| `make check_roles` | Проверить роли, созданные миграцией; сохранить `scripts/permissions.csv`. |
+| `make index_research` | Через `python3` выполнить по 500 замеров с индексом/без него на 1000, 2000, 5000 и 10000 событий; построить график matplotlib. |
 | `make test` | Существующие unit-тесты `./internal/service`, без БД. |
 | `make integration_test` | Существующие HTTP/PostgreSQL-тесты через testcontainers, нужен Docker. |
+
+Наполнение использует Faker (`ru_RU`, seed=42), `scripts/seed_data.json` и Pillow для PNG. В каждой таблице более 1000 строк, кроме журнала триггера: пользователь разрешил около 500. Удаляются 5% событий. Учебный вход: `user_1` (admin), `user_2` (user), пароль `password`.
+
+Исследование создаёт временные таблицы и не меняет рабочие данные/индекс. Результаты прямо в `scripts`: `index_samples.csv`, `index_results.json`, `index_chart.svg`. Методика описана в `../PLAN.md`. Не возвращать папку `research` и старые одиночные замеры. Обычный запуск через `python3`, без временного venv и дополнительных переменных окружения. В Ubuntu при запрете PEP 668 установка: `pip install --user --break-system-packages -r scripts/requirements.txt`.
 
 Swagger UI — `/swagger/index.html`. Пакет `JoinUp/docs` импортируется контроллером, но генерируется и исключён из Git: без `make swagger` свежая копия не соберёт сервер/интеграционные тесты. Makefile использует `@latest` для генераторов Swagger и новых миграций. `make install` выполняет также `go mod tidy`, поэтому может менять зависимости.
 

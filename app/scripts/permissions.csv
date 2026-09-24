@@ -1,0 +1,7 @@
+role,operation,expected,actual
+joinup_guest,select_event,allowed,allowed
+joinup_guest,update_event,denied,denied
+joinup_guest,select_users,denied,denied
+joinup_user,select_event,allowed,allowed
+joinup_user,update_event,allowed,allowed
+joinup_admin,delete_event,allowed,allowed

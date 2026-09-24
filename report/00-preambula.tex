@@ -1,0 +1,19 @@
+\usepackage{tikz}
+\usetikzlibrary{positioning, shapes.geometric, arrows.meta, fit, calc}
+\usepackage{enumitem}
+\setlist[itemize]{label=--}
+\setlist[enumerate]{label=\arabic*), leftmargin=\parindent, labelindent=\parindent, itemindent=*, align=left, topsep=0pt, itemsep=0pt, parsep=0pt}
+
+\newcolumntype{Y}{>{\centering\arraybackslash}X}
+
+\titleformat{\chapter}[block]{\hspace{\parindent}\large\bfseries}{\thechapter}{0.5em}{\large\bfseries\raggedright\hyphenpenalty=10000\exhyphenpenalty=10000}
+\titleformat{\section}[block]{\hspace{\parindent}\large\bfseries}{\thesection}{0.5em}{\large\bfseries\raggedright\hyphenpenalty=10000\exhyphenpenalty=10000}
+\titleformat{\subsection}[block]{\hspace{\parindent}\large\bfseries}{\thesubsection}{0.5em}{\large\bfseries\raggedright\hyphenpenalty=10000\exhyphenpenalty=10000}
+\titleformat{name=\chapter,numberless}[block]{}{}{0pt}{\large\bfseries\centering\hyphenpenalty=10000\exhyphenpenalty=10000}
+\titlespacing{name=\chapter,numberless}{0pt}{-22pt}{10pt}
+
+\DeclareFieldFormat{urldate}{%
+    (дата~обращения:\addspace\mbox{%
+    \iffieldundef{urlday}{}{\ifnumless{\thefield{urlday}}{10}{0\thefield{urlday}}{\thefield{urlday}}\adddot}%
+    \iffieldundef{urlmonth}{}{\ifnumless{\thefield{urlmonth}}{10}{0\thefield{urlmonth}}{\thefield{urlmonth}}\adddot}%
+    \thefield{urlyear}})}

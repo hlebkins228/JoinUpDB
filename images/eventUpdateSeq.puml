@@ -1,0 +1,51 @@
+@startuml
+
+actor "Пользователь" as u
+box "Клиент"
+  participant "Frontend" as c
+box end
+box "Сервер"
+    participant "Модуль событий" as s
+box end
+box "Хранение данных"
+  database "База данных" as db
+box end
+
+u -> c: Выбрать событие для редактирования
+activate c
+c -> s: Запрос на редактирование события
+activate s
+s -> db: Проверка, является ли пользователь создателем события
+activate db
+
+db --> s: Результат проверки
+deactivate db
+
+alt Пользователь создатель события
+  s -> db: Сохранение изменений события
+  activate db
+  db --> s: Изменения сохранены
+  deactivate db
+  s --> c: Редактирование разрешено
+else Пользователь не создатель события
+  s -> db: Проверка, является ли пользователь администратором
+  activate db
+  db --> s: Результат проверки
+  deactivate db
+
+  alt Пользователь администратор
+    s -> db: Сохранение изменений события
+    activate db
+    db --> s: Изменения сохранены
+    deactivate db
+    s --> c: Редактирование разрешено
+  else Пользователь не администратор
+    s --> c: Редактирование отклонено
+  end
+end
+
+deactivate s
+c --> u: Ответ
+deactivate c
+
+@enduml

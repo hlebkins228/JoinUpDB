@@ -1,0 +1,47 @@
+@startuml
+title JoinUp - Business Logic Class Diagram (Service)
+
+skinparam classAttributeIconSize 0
+left to right direction
+
+package "internal/service" {
+  interface EventRepo <<Port>> {
+    + GetEventsByCreator(creator string) : []*models.Event
+    + CreateEvent(event *models.Event) : error
+  }
+
+  class EventService <<Service>> {
+    - eventRepo : EventRepo
+    --
+    + GetUserEvents(user string) : []*models.Event
+  }
+}
+
+package "internal/models" {
+  class Event <<Model>> {
+    + Name : string
+    + Desc : string
+    + CreateTime : time.Time
+    + Creator : string
+    + Members : []string
+    + Location : Location
+  }
+
+  class Location <<Model>> {
+    + Name : string
+    + Longitude : float64
+    + Latitude : float64
+  }
+}
+
+EventService --> EventRepo : depends on
+EventService ..> Event : returns
+EventRepo ..> Event : returns/accepts
+Event *-- Location : contains
+
+note right of EventService
+  Business logic component.
+  Orchestrates use-cases via repository port.
+end note
+
+@enduml

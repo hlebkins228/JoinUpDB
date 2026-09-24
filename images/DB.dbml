@@ -1,0 +1,107 @@
+// DBML schema for JoinUp database diagram
+// Tables and relationships derived from app/migrations/20260330121114_name_create_event_table.sql
+
+Table image {
+  id int [pk, increment]
+  name text [not null]
+  data bytea [not null]
+}
+
+Table location {
+  id int [pk, increment]
+  name text [not null]
+  longitude float [not null]
+  latitude float [not null]
+  address text [not null]
+}
+
+Table users {
+  id int [pk, increment]
+  name text [not null]
+  age int [not null, note: "check (age > 0)"]
+  login text [not null]
+  password text [not null]
+  created_at timestamp [not null]
+  city text [not null]
+  telegram_login text [not null]
+  avatar_id int [not null]
+}
+
+Table event {
+  id int [pk, increment]
+  name text [not null]
+  description text [not null]
+  created_at timestamp [not null]
+  event_date timestamp [not null]
+  telegram_chat_url text [not null]
+  city text [not null]
+  creator_id int [not null]
+  location_id int [not null]
+  image_id int [not null]
+}
+
+Table member {
+  id int [pk, increment]
+  user_id int [not null]
+  event_id int [not null]
+  role text [not null]
+}
+
+Table category {
+  id int [pk, increment]
+  event_id int [not null]
+  subcategory_id int
+  name text [not null]
+}
+
+Table preset {
+  id int [pk, increment]
+  name text [not null]
+  category_id int [not null]
+  creator_id int [not null]
+}
+
+Table subscribe {
+  id int [pk, increment]
+  subscriber_id int [not null]
+  user_id int [not null]
+  subscribe_at timestamp [not null]
+}
+
+// Relationships
+// users.avatar_id -> image.id
+Ref: image.id < users.avatar_id
+
+// event.creator_id -> users.id (ON DELETE CASCADE)
+Ref: users.id < event.creator_id [delete: cascade]
+
+// event.location_id -> location.id (ON DELETE CASCADE)
+Ref: location.id < event.location_id [delete: cascade]
+
+// event.image_id -> image.id
+Ref: image.id < event.image_id
+
+// member.user_id -> users.id (ON DELETE CASCADE)
+Ref: users.id < member.user_id [delete: cascade]
+
+// member.event_id -> event.id (ON DELETE CASCADE)
+Ref: event.id < member.event_id [delete: cascade]
+
+// category.event_id -> event.id (ON DELETE CASCADE)
+Ref: event.id < category.event_id [delete: cascade]
+
+// category.subcategory_id -> category.id (ON DELETE CASCADE)
+Ref: category.id < category.subcategory_id [delete: cascade]
+
+// preset.category_id -> category.id (ON DELETE CASCADE)
+Ref: category.id < preset.category_id [delete: cascade]
+
+// preset.creator_id -> users.id (ON DELETE CASCADE)
+Ref: users.id < preset.creator_id [delete: cascade]
+
+// subscribe.subscriber_id -> users.id (ON DELETE CASCADE)
+Ref: users.id < subscribe.subscriber_id [delete: cascade]
+
+// subscribe.user_id -> users.id (ON DELETE CASCADE)
+Ref: users.id < subscribe.user_id [delete: cascade]
+

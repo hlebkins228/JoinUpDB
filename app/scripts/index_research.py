@@ -47,6 +47,25 @@ INDEX = "create index research_city_date_idx on event (city, event_date, id) whe
 EXPLAIN = "explain (analyze, buffers, timing off, format json) " + QUERY
 
 
+def plot_chart(summaries):
+    fig, ax = plt.subplots(figsize=(8, 5), layout="constrained")
+    for variant, label, linestyle, marker in (
+        ("without_index", "Без индекса", "-", "^"),
+        ("with_index", "С индексом", "--", "s"),
+    ):
+        values = [s for s in summaries if s["variant"] == variant]
+        ax.errorbar([s["event_count"] for s in values], [s["mean_ms"] for s in values],
+                    yerr=[s["ci95_half_width_ms"] for s in values], color="black",
+                    linestyle=linestyle, marker=marker, markerfacecolor="white", capsize=4, label=label)
+    ax.set(xlabel="Количество мероприятий", ylabel="Среднее время выполнения запроса, мс",
+           title="Зависимость времени выполнения запроса от количества записей в таблице", ylim=(0, None))
+    ax.set_xticks(SIZES)
+    ax.grid(alpha=0.3)
+    ax.legend()
+    fig.savefig(DIRECTORY / "index_chart.svg")
+    plt.close(fig)
+
+
 def main():
     reference_time = datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0)
     data = generate_data(6000, reference_time)
@@ -149,18 +168,7 @@ def main():
         "query": QUERY, "parameters": params, "summary": summaries, "plans": plans,
     }
     (DIRECTORY / "index_results.json").write_text(json.dumps(report, ensure_ascii=False, indent=2, default=str) + "\n")
-    fig, ax = plt.subplots(figsize=(8, 5), layout="constrained")
-    for variant, label in (("without_index", "Без индекса"), ("with_index", "С индексом")):
-        values = [s for s in summaries if s["variant"] == variant]
-        ax.errorbar([s["event_count"] for s in values], [s["mean_ms"] for s in values],
-                    yerr=[s["ci95_half_width_ms"] for s in values], marker="o", capsize=4, label=label)
-    ax.set(xlabel="Количество мероприятий", ylabel="Среднее время выполнения запроса, мс",
-           title="Зависимость времени выполнения запроса от количества записей в таблице", ylim=(0, None))
-    ax.set_xticks(SIZES)
-    ax.grid(alpha=0.3)
-    ax.legend()
-    fig.savefig(DIRECTORY / "index_chart.svg")
-    plt.close(fig)
+    plot_chart(summaries)
     for result in summaries:
         print(f"{result['event_count']}: {result['variant']} = {result['mean_ms']:.4f} мс")
 

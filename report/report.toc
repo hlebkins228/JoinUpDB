@@ -1,0 +1,19 @@
+\babel@toc {russian}{}\relax 
+\contentsline {chapter}{РЕФЕРАТ}{2}{chapter*.2}%
+\contentsline {chapter}{ВВЕДЕНИЕ}{4}{chapter*.4}%
+\contentsline {chapter}{\numberline {1}Аналитическая часть}{5}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Анализ предметной области}{5}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Анализ известных решений}{5}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Требования к системе}{6}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Формализация данных}{7}{section.1.4}%
+\contentsline {section}{\numberline {1.5}Формализация ролей}{9}{section.1.5}%
+\contentsline {section}{\numberline {1.6}Анализ моделей баз данных}{11}{section.1.6}%
+\contentsline {section}{\numberline {1.7}Формализация задачи}{11}{section.1.7}%
+\contentsline {chapter}{\numberline {2}Конструкторская часть}{12}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Проектирование базы данных}{12}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Ограничения целостности}{16}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Нормализация базы данных}{16}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Ролевая модель}{18}{section.2.4}%
+\contentsline {section}{\numberline {2.5}Триггер удаления мероприятия}{18}{section.2.5}%
+\contentsline {section}{\numberline {2.6}Архитектура и взаимодействие с БД}{19}{section.2.6}%
+\contentsline {chapter}{СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ}{21}{chapter*.25}%

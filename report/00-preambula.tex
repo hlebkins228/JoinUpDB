@@ -6,6 +6,8 @@
 
 \newcolumntype{Y}{>{\centering\arraybackslash}X}
 
+\ExecuteBibliographyOptions{sorting=none}
+
 \titleformat{\chapter}[block]{\hspace{\parindent}\large\bfseries}{\thechapter}{0.5em}{\large\bfseries\raggedright\hyphenpenalty=10000\exhyphenpenalty=10000}
 \titleformat{\section}[block]{\hspace{\parindent}\large\bfseries}{\thesection}{0.5em}{\large\bfseries\raggedright\hyphenpenalty=10000\exhyphenpenalty=10000}
 \titleformat{\subsection}[block]{\hspace{\parindent}\large\bfseries}{\thesubsection}{0.5em}{\large\bfseries\raggedright\hyphenpenalty=10000\exhyphenpenalty=10000}
@@ -17,3 +19,105 @@
     \iffieldundef{urlday}{}{\ifnumless{\thefield{urlday}}{10}{0\thefield{urlday}}{\thefield{urlday}}\adddot}%
     \iffieldundef{urlmonth}{}{\ifnumless{\thefield{urlmonth}}{10}{0\thefield{urlmonth}}{\thefield{urlmonth}}\adddot}%
     \thefield{urlyear}})}
+
+\renewcommand{\titlepageheader}[2]
+{
+	\begin{wrapfigure}[7]{l}{0.14\linewidth}
+		\vspace{3.4mm}
+		\hspace{-8mm}
+		\includegraphics[width=0.89\linewidth]{bmstu-logo}
+	\end{wrapfigure}
+
+	{
+		\singlespacing \small
+		Министерство науки и высшего образования Российской Федерации \\
+		Федеральное государственное автономное образовательное учреждение \\
+		высшего образования \\
+		<<Московский государственный технический университет \\
+		имени Н.~Э.~Баумана \\
+		(национальный исследовательский университет)>> \\
+		(МГТУ им. Н.~Э.~Баумана) \\
+	}
+
+	\vspace{-4.2mm}
+	\vhrulefill{0.9mm} \\
+	\vspace{-7mm}
+	\vhrulefill{0.2mm} \\
+	\vspace{2.8mm}
+
+	{
+		\small
+		ФАКУЛЬТЕТ ИУ \longunderline{<<#1>>} \\
+		\vspace{3.3mm}
+		КАФЕДРА ИУ7 \longunderline{<<#2>>} \\
+	}
+}
+
+\renewcommand{\titlepagenotetitle}[2]
+{
+	{
+		\LARGE \bfseries
+		РАСЧЕТНО-ПОЯСНИТЕЛЬНАЯ ЗАПИСКА \\
+	}
+	\vspace{5mm}
+	{
+		\Large \itshape
+		#1 \\
+		\vspace{5mm}
+		НА ТЕМУ: \\
+		\vspace{5mm}
+		<<#2>> \\
+	}
+}
+
+\makeatletter
+\def\@dottedtocline#1#2#3#4#5{%
+	\ifnum #1>\c@tocdepth \else
+	\vskip \z@ \@plus.2\p@
+	{\leftskip #2\relax
+		\rightskip 0pt plus 1fil         %
+		\parfillskip 0pt                 %
+		\parindent #2\relax\@afterindenttrue
+		\interlinepenalty\@M
+		\leavevmode
+		\@tempdima #3\relax
+		\advance\leftskip \@tempdima \null\nobreak\hskip -\leftskip
+		{#4}\nobreak
+		\leaders\hbox{$\m@th \mkern \@dotsep mu\hbox{.}\mkern \@dotsep mu$}\hfill
+		\nobreak
+		\hb@xt@\@pnumwidth{\hfil\normalfont \normalcolor #5%
+			\kern-\p@\kern\p@}%
+		\par}%
+	\fi}
+
+\renewcommand*{\l@chapter}[2]{%
+	\ifnum \c@tocdepth>\m@ne
+	\addpenalty{-\@highpenalty}
+	\vskip 1em \@plus.2em
+	\@dottedtocline{0}{0pt}{1.5em}{\bfseries #1}{\bfseries #2}%
+	\fi}
+
+\renewcommand*{\l@section}[2]{%
+	\ifnum \c@tocdepth>\z@
+	\addpenalty\@secpenalty
+	\vskip 0pt \@plus\p@
+	\@dottedtocline{1}{1.5em}{2.3em}{#1}{#2}%
+	\fi}
+
+\renewcommand*{\l@subsection}[2]{%
+	\ifnum \c@tocdepth>\@ne
+	\addpenalty\@secpenalty
+	\vskip 0pt \@plus\p@
+	\@dottedtocline{2}{3.8em}{3.2em}{#1}{#2}%
+	\fi}
+\makeatother
+
+\renewcommand{\maketableofcontents}
+{
+	\renewcommand\contentsname{СОДЕРЖАНИЕ}
+	\bgroup
+	\hyphenpenalty=10000
+	\exhyphenpenalty=10000
+	\tableofcontents
+	\egroup
+}

@@ -1,0 +1,390 @@
+\chapter{Конструкторская часть}
+
+В данной части представлены структура БД, ограничения целостности, ролевая модель, алгоритм триггера и архитектура приложения.
+
+\section{Проектирование базы данных}
+
+На основе сущностей аналитической части определены таблицы пользователей, мероприятий, локаций, изображений, категорий, участников и отзывов. Связь мероприятий с категориями вынесена в отдельную таблицу. Факты удаления хранятся в журнале. В схеме также сохранены таблицы пресетов и подписок; приложение их не использует.
+
+Пользователи, мероприятия, локации и изображения описаны в таблицах~\ref{tab:design-users}--\ref{tab:design-resources}. Указаны смысловые типы данных. Все атрибуты обязательны, кроме отмеченных как необязательные. Поле \texttt{id} -- первичный ключ каждой таблицы, кроме связи мероприятий с категориями, где ключ составной.
+
+\begin{table}[H]
+    \caption{Структура таблицы пользователей users}
+    \label{tab:design-users}
+    \small
+    \begin{tabularx}{\textwidth}{|p{4cm}|p{3cm}|X|}
+        \hline
+        \textbf{Атрибут} & \textbf{Тип} & \textbf{Назначение и ограничения} \\
+        \hline
+        id & Идентификатор & Пользователь \\
+        \hline
+        name, city & Строка & Имя и город проживания \\
+        \hline
+        age & Целое число & Возраст, больше нуля \\
+        \hline
+        login & Строка & Уникальный логин \\
+        \hline
+        password & Строка & Хеш пароля \\
+        \hline
+        created\_at & Дата и время & Регистрация \\
+        \hline
+        role & Строка & Роль приложения, по умолчанию user \\
+        \hline
+        telegram\_login & Строка & Имя в Telegram, необязательное \\
+        \hline
+        avatar\_id & Идентификатор & Ссылка на image, необязательная \\
+        \hline
+    \end{tabularx}
+\end{table}
+
+\begin{table}[H]
+    \caption{Структура таблицы мероприятий event}
+    \label{tab:design-event}
+    \small
+    \begin{tabularx}{\textwidth}{|p{4cm}|p{3cm}|X|}
+        \hline
+        \textbf{Атрибут} & \textbf{Тип} & \textbf{Назначение и ограничения} \\
+        \hline
+        id & Идентификатор & Мероприятие \\
+        \hline
+        name, city & Строка & Название и город проведения \\
+        \hline
+        description & Строка & Описание, необязательное \\
+        \hline
+        created\_at, updated\_at, event\_date & Дата и время & Создание, последнее изменение и проведение \\
+        \hline
+        telegram\_chat\_url & Строка & Ссылка на чат, необязательная \\
+        \hline
+        creator\_id & Идентификатор & Организатор, ссылка на users \\
+        \hline
+        location\_id & Идентификатор & Место проведения, ссылка на location \\
+        \hline
+        image\_id & Идентификатор & Обложка, ссылка на image, необязательная \\
+        \hline
+        deleted & Логический & Признак удаления, изначально ложный \\
+        \hline
+    \end{tabularx}
+\end{table}
+
+\begin{table}[H]
+    \caption{Структура таблиц локаций и изображений}
+    \label{tab:design-resources}
+    \small
+    \begin{tabularx}{\textwidth}{|p{2.2cm}|p{4cm}|X|}
+        \hline
+        \textbf{Таблица} & \textbf{Атрибуты} & \textbf{Тип и назначение} \\
+        \hline
+        location & id & Идентификатор локации \\
+        \hline
+        location & name, address & Строки: название и адрес \\
+        \hline
+        location & longitude, latitude & Вещественные числа: долгота и широта \\
+        \hline
+        image & id & Идентификатор изображения \\
+        \hline
+        image & name & Строка: имя файла \\
+        \hline
+        image & data & Двоичные данные: содержимое файла \\
+        \hline
+    \end{tabularx}
+\end{table}
+
+Категории, участие, отзывы, журнал и неиспользуемые таблицы описаны в таблицах~\ref{tab:design-categories}--\ref{tab:design-unused}.
+
+\begin{table}[H]
+    \caption{Структура таблиц категорий и их связи с мероприятиями}
+    \label{tab:design-categories}
+    \small
+    \begin{tabularx}{\textwidth}{|p{3.1cm}|p{3.5cm}|X|}
+        \hline
+        \textbf{Таблица} & \textbf{Атрибуты} & \textbf{Тип, назначение и ограничения} \\
+        \hline
+        category & id & Идентификатор категории \\
+        \hline
+        category & name & Строка: уникальное название \\
+        \hline
+        category & subcategory\_id & Идентификатор: необязательная ссылка на category \\
+        \hline
+        event\_category & event\_id, category\_id & Идентификаторы мероприятия и категории; внешние ключи и составной первичный ключ \\
+        \hline
+    \end{tabularx}
+\end{table}
+
+\begin{table}[H]
+    \caption{Структура таблиц участия, отзывов и журнала}
+    \label{tab:design-actions}
+    \small
+    \begin{tabularx}{\textwidth}{|p{3.8cm}|p{3cm}|X|}
+        \hline
+        \textbf{Таблица} & \textbf{Атрибуты} & \textbf{Тип и назначение} \\
+        \hline
+        member & id & Идентификатор участия \\
+        \hline
+        member & user\_id, event\_id & Идентификаторы пользователя и мероприятия; внешние ключи \\
+        \hline
+        member & role & Строка: роль участника мероприятия \\
+        \hline
+        review & id & Идентификатор отзыва \\
+        \hline
+        review & event\_id, author\_id & Идентификаторы мероприятия и автора; внешние ключи \\
+        \hline
+        review & rating, text & Целое число: оценка; строка: текст отзыва \\
+        \hline
+        review & created\_at & Дата и время создания \\
+        \hline
+        event\_deletion\_log & id & Идентификатор записи журнала \\
+        \hline
+        event\_deletion\_log & event\_id & Идентификатор мероприятия; внешний ключ \\
+        \hline
+        event\_deletion\_log & deleted\_at & Дата и время удаления \\
+        \hline
+    \end{tabularx}
+\end{table}
+
+\begin{table}[H]
+    \caption{Сохраненные таблицы, не используемые приложением}
+    \label{tab:design-unused}
+    \small
+    \begin{tabularx}{\textwidth}{|p{2.2cm}|p{4cm}|X|}
+        \hline
+        \textbf{Таблица} & \textbf{Атрибуты} & \textbf{Тип и назначение} \\
+        \hline
+        preset & id, name & Идентификатор и строка: название пресета \\
+        \hline
+        preset & category\_id, creator\_id & Идентификаторы категории и автора; внешние ключи \\
+        \hline
+        subscribe & id & Идентификатор подписки \\
+        \hline
+        subscribe & subscriber\_id, user\_id & Идентификаторы подписчика и отслеживаемого пользователя; ссылки на users \\
+        \hline
+        subscribe & subscribe\_at & Дата и время подписки \\
+        \hline
+    \end{tabularx}
+\end{table}
+
+Диаграмма БД представлена на рисунке~\ref{fig:db-design}. Стрелки направлены от внешнего ключа к таблице, на которую он ссылается. Каждая связь имеет кратность <<многие к одному>>; со стороны дочерних записей допускается ноль элементов. Для необязательных внешних ключей связанная запись может отсутствовать. Обозначения PK и FK соответствуют первичному и внешнему ключам.
+
+\begin{figure}[p]
+    \centering
+    \singlespacing
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}[
+        font=\small\linespread{1}\selectfont,
+        entity/.style={draw, rectangle, text width=4cm, align=left, inner sep=6pt},
+        link/.style={-{Stealth[length=2.5mm]}, rounded corners=3pt},
+        every path/.style={line width=0.5pt}
+    ]
+        \node[entity] (users) at (0,0) {\textbf{users}\\PK: id\\FK: avatar\_id};
+        \node[entity] (event) at (11,0) {\textbf{event}\\PK: id\\FK: creator\_id\\FK: location\_id\\FK: image\_id};
+        \node[entity] (image) at (5.5,0) {\textbf{image}\\PK: id};
+        \node[entity] (member) at (5.5,4) {\textbf{member}\\PK: id\\FK: user\_id, event\_id};
+        \node[entity] (location) at (11,4) {\textbf{location}\\PK: id};
+        \node[entity] (subscribe) at (0,4) {\textbf{subscribe}\\PK: id\\FK: subscriber\_id\\FK: user\_id};
+        \node[entity] (review) at (5.5,-4) {\textbf{review}\\PK: id\\FK: author\_id, event\_id};
+        \node[entity, text width=4.1cm] (log) at (11,-4) {\textbf{event\_deletion\_log}\\PK: id\\FK: event\_id};
+        \node[entity] (preset) at (0,-8) {\textbf{preset}\\PK: id\\FK: creator\_id\\FK: category\_id};
+        \node[entity] (category) at (5.5,-8) {\textbf{category}\\PK: id\\FK: subcategory\_id};
+        \node[entity] (ec) at (11,-8) {\textbf{event\_category}\\PK, FK: event\_id\\PK, FK: category\_id};
+
+        \draw[link] (users.east) -- (image.west);
+        \draw[link] (event.west) -- (image.east);
+        \draw[link] (event.north west) -- (8.5,2) -- (2.5,2) -- (users.north east);
+        \draw[link] (event.north) -- (location.south);
+        \draw[link] (member.west) -- (users.north east);
+        \draw[link] (member.east) -- (event.north west);
+        \draw[link] ([xshift=-5mm]subscribe.south) -- ([xshift=-5mm]users.north);
+        \draw[link] ([xshift=5mm]subscribe.south) -- ([xshift=5mm]users.north);
+        \draw[link] (review.west) -- (users.south east);
+        \draw[link] (review.east) -- (event.south west);
+        \draw[link] (log.north) -- (event.south);
+        \draw[link] (preset.north) -- (users.south);
+        \draw[link] (preset.east) -- (category.west);
+        \draw[link] (ec.west) -- (category.east);
+        \draw[link] (ec.east) -- (14,-8) -- (14,0) -- (event.east);
+        \draw[link] (category.south) -- (5.5,-10) -- (8.2,-10) |- (category.south east);
+    \end{tikzpicture}}
+    \caption{Диаграмма базы данных}
+    \label{fig:db-design}
+\end{figure}
+\clearpage
+
+\section{Ограничения целостности}
+
+Первичные ключи определяют записи, внешние ключи запрещают ссылки на отсутствующие объекты. Дополнительные ограничения приведены в таблице~\ref{tab:design-constraints}.
+
+\begin{table}[H]
+    \caption{Ограничения БД и проверки приложения}
+    \label{tab:design-constraints}
+    \small
+    \begin{tabularx}{\textwidth}{|p{3.2cm}|X|}
+        \hline
+        \textbf{Уровень} & \textbf{Ограничения} \\
+        \hline
+        База данных & Уникальны логин, название категории, пары пользователь/мероприятие в member, мероприятие/автор в review и мероприятие/категория в event\_category \\
+        \hline
+        База данных & Возраст больше нуля; оценка от~1 до~5; длина отзыва не более~2000~символов \\
+        \hline
+        Приложение & Создание и перенос мероприятия в прошлое запрещены; прошедшее мероприятие нельзя редактировать \\
+        \hline
+        Приложение & Изменение и удаление мероприятия доступны автору или администратору \\
+        \hline
+        Приложение & Отзыв разрешен после наступления времени неудаленного мероприятия, автор отзыва не является организатором; после удаления пробелов по краям текст содержит от~1 до~2000~символов \\
+        \hline
+    \end{tabularx}
+\end{table}
+
+Удаление объявления изменяет его признак \texttt{deleted}; связанные записи сохраняются. При физическом удалении мероприятия каскадно удаляются участие, связи с категориями, отзывы и журнал. Физическое удаление пользователя каскадно удаляет его мероприятия, участия, отзывы, пресеты и обе стороны подписок. Удаление используемой локации, изображения или категории ограничивается внешними ключами. Эти правила не означают наличие соответствующих операций в интерфейсе.
+
+\section{Нормализация базы данных}
+
+Нормализация проверяется по функциональным зависимостям: одинаковые значения определяющих атрибутов должны задавать одинаковые значения зависимых атрибутов. Для третьей нормальной формы (3НФ) в каждой нетривиальной зависимости определяющий набор должен быть суперключом либо зависимый атрибут должен входить в потенциальный ключ~\cite{normalization}.
+
+Потенциальные ключи отношений перечислены в таблице~\ref{tab:design-keys}. Каждый указанный ключ определяет все остальные атрибуты своей строки; для составных ключей определяющим является весь набор. Других зависимостей в принятой модели не задано.
+
+\begin{table}[H]
+    \caption{Потенциальные ключи отношений}
+    \label{tab:design-keys}
+    \small
+    \begin{tabularx}{\textwidth}{|p{5.6cm}|X|}
+        \hline
+        \textbf{Отношение} & \textbf{Потенциальные ключи} \\
+        \hline
+        users & id; login \\
+        \hline
+        category & id; name \\
+        \hline
+        member & id; (user\_id, event\_id) \\
+        \hline
+        review & id; (event\_id, author\_id) \\
+        \hline
+        event\_category & (event\_id, category\_id) \\
+        \hline
+        event, location, image & id в каждом отношении \\
+        \hline
+        preset, subscribe, event\_deletion\_log & id в каждом отношении \\
+        \hline
+    \end{tabularx}
+\end{table}
+
+Проверим нормальные формы:
+\begin{enumerate}[label=\arabic*)]
+    \item Первая нормальная форма: атрибуты содержат одиночные значения выбранных доменов. Списки участников и категорий представлены отдельными строками связующих таблиц. Изображение хранится одним двоичным значением.
+    \item Вторая нормальная форма: в member роль зависит от пары пользователь/мероприятие, в review оценка, текст и время -- от пары мероприятие/автор. Отдельный пользователь или мероприятие не определяет эти сведения. У event\_category нет неключевых атрибутов; остальные потенциальные ключи состоят из одного атрибута.
+    \item Третья нормальная форма: сведения о пользователе, локации, категории и изображении не дублируются в связанных отношениях. Например, creator\_id задает пользователя, но его имя не хранится в event; location\_id задает локацию, но ее адрес вынесен в location. Между неключевыми атрибутами отношений дополнительных зависимостей нет. Все определяющие наборы из таблицы~\ref{tab:design-keys} являются ключами.
+\end{enumerate}
+
+Таким образом, для заданных зависимостей отношения находятся в~3НФ. Названия локаций и их координаты не считаются уникальными; город мероприятия задается отдельно от адреса локации. Пара пользователей в subscribe не является ключом: ограничение ее уникальности отсутствует. Рейтинг организатора вычисляется по отзывам и отдельным атрибутом users не хранится.
+
+\section{Ролевая модель}
+
+Права подключений к БД распределены между ролями \texttt{joinup\_guest}, \texttt{joinup\_user} и \texttt{joinup\_admin}. Матрица доступа приведена в таблице~\ref{tab:design-roles}. В ней чтение, добавление, изменение и удаление обозначают соответствующие операции над строками.
+
+\begin{table}[H]
+    \caption{Права ролей БД}
+    \label{tab:design-roles}
+    \small
+    \begin{tabularx}{\textwidth}{|p{5.2cm}|Y|Y|Y|}
+        \hline
+        \textbf{Объекты} & \textbf{Гость} & \textbf{Пользователь} & \textbf{Администратор} \\
+        \hline
+        event, location, image, category, event\_category, review & Чтение & Чтение, добавление, изменение, удаление & Все права на таблицы \\
+        \hline
+        users, member, preset, subscribe, event\_deletion\_log & Нет & Чтение, добавление, изменение, удаление & Все права на таблицы \\
+        \hline
+        Последовательности идентификаторов десяти таблиц с полем id & Нет & Использование и чтение & Все права на последовательности \\
+        \hline
+        Подключение к БД, использование схемы public & Да & Да & Да \\
+        \hline
+    \end{tabularx}
+\end{table}
+
+Полные права администратора относятся к указанным объектам, а не к управлению сервером БД. Сервер приложения всегда подключается как \texttt{joinup\_user}; авторизация пользователя не меняет роль подключения. Поэтому принадлежность мероприятия автору и полномочия администратора приложения проверяются перед вызовом репозитория.
+
+Пользовательская роль БД также имеет право добавления в журнал, необходимое триггерной функции. Журнал не защищен от прямого изменения этой ролью. Роль гостя БД имеет доступ к разрешенным таблицам целиком; фильтрация удаленных мероприятий выполняется приложением.
+
+\section{Триггер удаления мероприятия}
+
+Триггер \texttt{event\_deletion\_log\_trigger} вызывает функцию \texttt{log\_event\_deletion} после обновления признака \texttt{deleted} для каждой измененной строки. Вход функции -- прежнее и новое состояния строки; результат -- запись журнала при переходе признака из ложного значения в истинное.
+
+Схема алгоритма представлена на рисунке~\ref{fig:deletion-algorithm}. Повторное присваивание истинного значения не создает запись. Возврат признака в ложное значение также не записывается. При ошибке вставки исходное обновление откатывается вместе с действиями триггера. Журнал содержит идентификатор мероприятия и время удаления, без копии его названия и описания.
+
+\begin{figure}[H]
+    \centering
+    \singlespacing
+    \begin{tikzpicture}[
+        font=\small\linespread{1}\selectfont,
+        terminal/.style={draw, rounded corners=4mm, minimum width=3cm, minimum height=1cm, align=center},
+        process/.style={draw, rectangle, text width=6cm, minimum height=1.2cm, align=center},
+        decision/.style={draw, diamond, aspect=2.5, text width=5cm, align=center, inner sep=1pt},
+        link/.style={-{Stealth[length=2.5mm]}, line width=0.5pt}
+    ]
+        \node[terminal] (start) at (0,0) {Начало};
+        \node[decision] (check) at (0,-2.5) {Прежний признак ложен\\и новый истинен?};
+        \node[process] (insert) at (0,-5) {Добавить в журнал ID мероприятия и время удаления};
+        \node[process] (return) at (0,-7) {Вернуть новую строку};
+        \node[terminal] (end) at (0,-9) {Конец};
+        \draw[link] (start) -- (check);
+        \draw[link] (check) -- node[right] {Да} (insert);
+        \draw[link] (check.east) -- node[above] {Нет} (5.5,-2.5) |- (return.east);
+        \draw[link] (insert) -- (return);
+        \draw[link] (return) -- (end);
+    \end{tikzpicture}
+    \caption{Схема алгоритма функции записи факта удаления}
+    \label{fig:deletion-algorithm}
+\end{figure}
+
+\section{Архитектура и взаимодействие с БД}
+
+Приложение состоит из клиентской части в браузере, сервера и БД. Схема представлена на рисунке~\ref{fig:design-architecture}. Контроллеры принимают запросы и формируют ответы, сервисы проверяют правила предметной области, репозитории выполняют запросы к БД. Для выбора и отображения места браузер обращается к Яндекс Картам. Ссылка на Telegram-чат хранится как атрибут мероприятия.
+
+\begin{figure}[H]
+    \centering
+    \singlespacing
+    \begin{tikzpicture}[
+        font=\small\linespread{1}\selectfont,
+        block/.style={draw, rectangle, text width=4.4cm, minimum height=1cm, align=center},
+        link/.style={-{Stealth[length=2.5mm]}, line width=0.5pt}
+    ]
+        \node[block] (browser) at (0,0) {Браузер\\Пользовательский интерфейс};
+        \node[block] (maps) at (7,0) {Яндекс Карты};
+        \node[block] (controller) at (0,-2) {Контроллеры};
+        \node[block] (service) at (0,-3.4) {Сервисы};
+        \node[block] (repository) at (0,-4.8) {Репозитории};
+        \node[draw, dashed, fit=(controller)(service)(repository), inner sep=3mm, label=right:Сервер] {};
+        \node[block] (db) at (0,-6.5) {База данных};
+        \draw[link] (browser) -- node[above] {Карта} (maps);
+        \draw[link] (browser) -- node[right, fill=white, inner sep=1pt] {HTTP, JSON} (controller);
+        \draw[link] (controller) -- (service);
+        \draw[link] (service) -- (repository);
+        \draw[link] (repository) -- node[right, fill=white, inner sep=1pt] {Запросы} (db);
+    \end{tikzpicture}
+    \caption{Архитектура приложения}
+    \label{fig:design-architecture}
+\end{figure}
+
+Сервер использует пул соединений и параметризованные запросы. Объект управления транзакцией передается репозиториям через контекст операции. Границы транзакций приведены в таблице~\ref{tab:design-transactions}.
+
+\begin{table}[H]
+    \caption{Транзакции изменения данных}
+    \label{tab:design-transactions}
+    \small
+    \begin{tabularx}{\textwidth}{|p{4.8cm}|X|}
+        \hline
+        \textbf{Операция} & \textbf{Действия в одной транзакции} \\
+        \hline
+        Создание мероприятия & Проверка ссылок, добавление локации и мероприятия \\
+        \hline
+        Загрузка обложки & Добавление изображения и изменение ссылки на него в мероприятии \\
+        \hline
+        Создание отзыва & Чтение мероприятия, проверка условий и отсутствия отзыва, добавление отзыва \\
+        \hline
+        Мягкое удаление & Обновление признака удаления и вставка в журнал триггером в рамках одного оператора \\
+        \hline
+    \end{tabularx}
+\end{table}
+
+Уникальные ограничения предотвращают повторное участие и повторный отзыв при одновременных запросах. Обновление локации и мероприятия выполняется без общей транзакции; проверки времени и прав не блокируют строку.
+
+\section*{Вывод}
+
+Определены структура~11~таблиц, ограничения и права ролей; для принятых зависимостей показано соответствие~3НФ. Разработаны схема триггера, архитектура приложения и границы транзакций.

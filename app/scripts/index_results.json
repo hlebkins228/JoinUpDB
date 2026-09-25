@@ -1,5 +1,5 @@
 {
-  "reference_time_utc": "2026-09-24T15:42:20",
+  "reference_time_utc": "2026-09-25T11:48:45",
   "postgresql": "PostgreSQL 16.11 (Debian 16.11-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
   "client_platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
   "client_cpu_count": 12,
@@ -69,8 +69,8 @@
   "query": "\nselect e.id, e.name, e.description,\n       e.created_at at time zone 'utc', e.updated_at at time zone 'utc',\n       e.event_date at time zone 'utc', e.telegram_chat_url, e.city,\n       e.creator_id, e.image_id, l.name, l.longitude, l.latitude, l.address, e.deleted\nfrom event e\njoin location l on e.location_id = l.id\nwhere e.deleted = false\n  and (%(name)s::text is null or e.name ilike '%%' || %(name)s || '%%')\n  and (%(date_from)s::timestamp is null or e.event_date >= %(date_from)s)\n  and (%(date_to)s::timestamp is null or e.event_date <= %(date_to)s)\n  and (%(city)s::text is null or e.city = %(city)s)\n  and (cardinality(%(categories)s::int[]) = 0 or e.id in (\n      select ec.event_id from event_category ec\n      where ec.category_id = any(%(categories)s::int[])\n      group by ec.event_id\n      having count(distinct ec.category_id) = cardinality(%(categories)s::int[])\n  ))\norder by e.event_date, e.id\n",
   "parameters": {
     "name": null,
-    "date_from": "2026-08-25 15:42:20",
-    "date_to": "2026-10-24 15:42:20",
+    "date_from": "2026-08-26 11:48:45",
+    "date_to": "2026-10-25 11:48:45",
     "city": "Москва",
     "categories": []
   },
@@ -79,72 +79,72 @@
       "event_count": 1000,
       "variant": "without_index",
       "measurements": 500,
-      "mean_ms": 0.340984,
-      "stddev_ms": 0.11423361318264219,
-      "ci95_half_width_ms": 0.023720105449783827,
+      "mean_ms": 0.324976,
+      "stddev_ms": 0.043457064522512655,
+      "ci95_half_width_ms": 0.0052493469169777665,
       "returned_rows": 57
     },
     {
       "event_count": 1000,
       "variant": "with_index",
       "measurements": 500,
-      "mean_ms": 0.21591,
-      "stddev_ms": 0.055844885194660486,
-      "ci95_half_width_ms": 0.009668799866560487,
+      "mean_ms": 0.19899,
+      "stddev_ms": 0.029075568392633522,
+      "ci95_half_width_ms": 0.004034993504123644,
       "returned_rows": 57
     },
     {
       "event_count": 2000,
       "variant": "without_index",
       "measurements": 500,
-      "mean_ms": 1.835178,
-      "stddev_ms": 0.2569898010265453,
-      "ci95_half_width_ms": 0.08254884409248921,
+      "mean_ms": 1.824198,
+      "stddev_ms": 0.2406911782400118,
+      "ci95_half_width_ms": 0.05372289375058511,
       "returned_rows": 105
     },
     {
       "event_count": 2000,
       "variant": "with_index",
       "measurements": 500,
-      "mean_ms": 1.539382,
-      "stddev_ms": 0.10863367169184009,
-      "ci95_half_width_ms": 0.010615397702267012,
+      "mean_ms": 1.583182,
+      "stddev_ms": 0.3157906654173449,
+      "ci95_half_width_ms": 0.0771742742199706,
       "returned_rows": 105
     },
     {
       "event_count": 5000,
       "variant": "without_index",
       "measurements": 500,
-      "mean_ms": 2.679238,
-      "stddev_ms": 0.8100536297815377,
-      "ci95_half_width_ms": 0.1868207955423858,
+      "mean_ms": 2.672528,
+      "stddev_ms": 0.4876210637571344,
+      "ci95_half_width_ms": 0.0798493342601934,
       "returned_rows": 287
     },
     {
       "event_count": 5000,
       "variant": "with_index",
       "measurements": 500,
-      "mean_ms": 1.94634,
-      "stddev_ms": 0.18184525232071133,
-      "ci95_half_width_ms": 0.022977725121092363,
+      "mean_ms": 1.973472,
+      "stddev_ms": 0.20620538921444842,
+      "ci95_half_width_ms": 0.04272562576733654,
       "returned_rows": 287
     },
     {
       "event_count": 10000,
       "variant": "without_index",
       "measurements": 500,
-      "mean_ms": 4.07989,
-      "stddev_ms": 0.2919411192933749,
-      "ci95_half_width_ms": 0.05284455688407579,
+      "mean_ms": 4.90529,
+      "stddev_ms": 1.4308597951605229,
+      "ci95_half_width_ms": 0.3201415735990539,
       "returned_rows": 600
     },
     {
       "event_count": 10000,
       "variant": "with_index",
       "measurements": 500,
-      "mean_ms": 2.690184,
-      "stddev_ms": 0.2707822523733799,
-      "ci95_half_width_ms": 0.0382004974132189,
+      "mean_ms": 3.037942,
+      "stddev_ms": 0.5423824961965132,
+      "ci95_half_width_ms": 0.2034282941304219,
       "returned_rows": 600
     }
   ],
@@ -218,7 +218,7 @@
                   "Plan Width": 291,
                   "Actual Rows": 57,
                   "Actual Loops": 1,
-                  "Filter": "((NOT deleted) AND (event_date >= '2026-08-25 15:42:20'::timestamp without time zone) AND (event_date <= '2026-10-24 15:42:20'::timestamp without time zone) AND (city = 'Москва'::text))",
+                  "Filter": "((NOT deleted) AND (event_date >= '2026-08-26 11:48:45'::timestamp without time zone) AND (event_date <= '2026-10-25 11:48:45'::timestamp without time zone) AND (city = 'Москва'::text))",
                   "Rows Removed by Filter": 943,
                   "Shared Hit Blocks": 0,
                   "Shared Read Blocks": 0,
@@ -275,9 +275,9 @@
           "Temp Read Blocks": 0,
           "Temp Written Blocks": 0
         },
-        "Planning Time": 0.149,
+        "Planning Time": 0.129,
         "Triggers": [],
-        "Execution Time": 0.292
+        "Execution Time": 0.335
       }
     },
     {
@@ -349,7 +349,7 @@
                   "Plan Width": 291,
                   "Actual Rows": 57,
                   "Actual Loops": 1,
-                  "Recheck Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-25 15:42:20'::timestamp without time zone) AND (event_date <= '2026-10-24 15:42:20'::timestamp without time zone) AND (NOT deleted))",
+                  "Recheck Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-26 11:48:45'::timestamp without time zone) AND (event_date <= '2026-10-25 11:48:45'::timestamp without time zone) AND (NOT deleted))",
                   "Rows Removed by Index Recheck": 0,
                   "Exact Heap Blocks": 29,
                   "Lossy Heap Blocks": 0,
@@ -376,7 +376,7 @@
                       "Plan Width": 0,
                       "Actual Rows": 57,
                       "Actual Loops": 1,
-                      "Index Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-25 15:42:20'::timestamp without time zone) AND (event_date <= '2026-10-24 15:42:20'::timestamp without time zone))",
+                      "Index Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-26 11:48:45'::timestamp without time zone) AND (event_date <= '2026-10-25 11:48:45'::timestamp without time zone))",
                       "Shared Hit Blocks": 0,
                       "Shared Read Blocks": 0,
                       "Shared Dirtied Blocks": 0,
@@ -434,9 +434,9 @@
           "Temp Read Blocks": 0,
           "Temp Written Blocks": 0
         },
-        "Planning Time": 0.145,
+        "Planning Time": 0.152,
         "Triggers": [],
-        "Execution Time": 0.181
+        "Execution Time": 0.199
       }
     },
     {
@@ -560,7 +560,7 @@
                       "Plan Width": 292,
                       "Actual Rows": 105,
                       "Actual Loops": 1,
-                      "Filter": "((NOT deleted) AND (event_date >= '2026-08-25 15:42:20'::timestamp without time zone) AND (event_date <= '2026-10-24 15:42:20'::timestamp without time zone) AND (city = 'Москва'::text))",
+                      "Filter": "((NOT deleted) AND (event_date >= '2026-08-26 11:48:45'::timestamp without time zone) AND (event_date <= '2026-10-25 11:48:45'::timestamp without time zone) AND (city = 'Москва'::text))",
                       "Rows Removed by Filter": 1895,
                       "Shared Hit Blocks": 0,
                       "Shared Read Blocks": 0,
@@ -591,9 +591,9 @@
           "Temp Read Blocks": 0,
           "Temp Written Blocks": 0
         },
-        "Planning Time": 0.199,
+        "Planning Time": 0.149,
         "Triggers": [],
-        "Execution Time": 1.792
+        "Execution Time": 1.791
       }
     },
     {
@@ -717,7 +717,7 @@
                       "Plan Width": 292,
                       "Actual Rows": 105,
                       "Actual Loops": 1,
-                      "Recheck Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-25 15:42:20'::timestamp without time zone) AND (event_date <= '2026-10-24 15:42:20'::timestamp without time zone) AND (NOT deleted))",
+                      "Recheck Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-26 11:48:45'::timestamp without time zone) AND (event_date <= '2026-10-25 11:48:45'::timestamp without time zone) AND (NOT deleted))",
                       "Rows Removed by Index Recheck": 0,
                       "Exact Heap Blocks": 58,
                       "Lossy Heap Blocks": 0,
@@ -744,7 +744,7 @@
                           "Plan Width": 0,
                           "Actual Rows": 105,
                           "Actual Loops": 1,
-                          "Index Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-25 15:42:20'::timestamp without time zone) AND (event_date <= '2026-10-24 15:42:20'::timestamp without time zone))",
+                          "Index Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-26 11:48:45'::timestamp without time zone) AND (event_date <= '2026-10-25 11:48:45'::timestamp without time zone))",
                           "Shared Hit Blocks": 0,
                           "Shared Read Blocks": 0,
                           "Shared Dirtied Blocks": 0,
@@ -776,9 +776,9 @@
           "Temp Read Blocks": 0,
           "Temp Written Blocks": 0
         },
-        "Planning Time": 0.18,
+        "Planning Time": 0.167,
         "Triggers": [],
-        "Execution Time": 2.158
+        "Execution Time": 1.431
       }
     },
     {
@@ -902,7 +902,7 @@
                       "Plan Width": 292,
                       "Actual Rows": 287,
                       "Actual Loops": 1,
-                      "Filter": "((NOT deleted) AND (event_date >= '2026-08-25 15:42:20'::timestamp without time zone) AND (event_date <= '2026-10-24 15:42:20'::timestamp without time zone) AND (city = 'Москва'::text))",
+                      "Filter": "((NOT deleted) AND (event_date >= '2026-08-26 11:48:45'::timestamp without time zone) AND (event_date <= '2026-10-25 11:48:45'::timestamp without time zone) AND (city = 'Москва'::text))",
                       "Rows Removed by Filter": 4713,
                       "Shared Hit Blocks": 0,
                       "Shared Read Blocks": 0,
@@ -933,9 +933,9 @@
           "Temp Read Blocks": 0,
           "Temp Written Blocks": 0
         },
-        "Planning Time": 0.162,
+        "Planning Time": 0.266,
         "Triggers": [],
-        "Execution Time": 2.937
+        "Execution Time": 2.881
       }
     },
     {
@@ -1059,7 +1059,7 @@
                       "Plan Width": 292,
                       "Actual Rows": 287,
                       "Actual Loops": 1,
-                      "Recheck Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-25 15:42:20'::timestamp without time zone) AND (event_date <= '2026-10-24 15:42:20'::timestamp without time zone) AND (NOT deleted))",
+                      "Recheck Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-26 11:48:45'::timestamp without time zone) AND (event_date <= '2026-10-25 11:48:45'::timestamp without time zone) AND (NOT deleted))",
                       "Rows Removed by Index Recheck": 0,
                       "Exact Heap Blocks": 148,
                       "Lossy Heap Blocks": 0,
@@ -1086,7 +1086,7 @@
                           "Plan Width": 0,
                           "Actual Rows": 287,
                           "Actual Loops": 1,
-                          "Index Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-25 15:42:20'::timestamp without time zone) AND (event_date <= '2026-10-24 15:42:20'::timestamp without time zone))",
+                          "Index Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-26 11:48:45'::timestamp without time zone) AND (event_date <= '2026-10-25 11:48:45'::timestamp without time zone))",
                           "Shared Hit Blocks": 0,
                           "Shared Read Blocks": 0,
                           "Shared Dirtied Blocks": 0,
@@ -1118,9 +1118,9 @@
           "Temp Read Blocks": 0,
           "Temp Written Blocks": 0
         },
-        "Planning Time": 0.259,
+        "Planning Time": 0.159,
         "Triggers": [],
-        "Execution Time": 1.837
+        "Execution Time": 2.032
       }
     },
     {
@@ -1244,7 +1244,7 @@
                       "Plan Width": 292,
                       "Actual Rows": 600,
                       "Actual Loops": 1,
-                      "Filter": "((NOT deleted) AND (event_date >= '2026-08-25 15:42:20'::timestamp without time zone) AND (event_date <= '2026-10-24 15:42:20'::timestamp without time zone) AND (city = 'Москва'::text))",
+                      "Filter": "((NOT deleted) AND (event_date >= '2026-08-26 11:48:45'::timestamp without time zone) AND (event_date <= '2026-10-25 11:48:45'::timestamp without time zone) AND (city = 'Москва'::text))",
                       "Rows Removed by Filter": 9400,
                       "Shared Hit Blocks": 0,
                       "Shared Read Blocks": 0,
@@ -1275,9 +1275,9 @@
           "Temp Read Blocks": 0,
           "Temp Written Blocks": 0
         },
-        "Planning Time": 0.17,
+        "Planning Time": 0.203,
         "Triggers": [],
-        "Execution Time": 3.92
+        "Execution Time": 4.043
       }
     },
     {
@@ -1401,7 +1401,7 @@
                       "Plan Width": 292,
                       "Actual Rows": 600,
                       "Actual Loops": 1,
-                      "Recheck Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-25 15:42:20'::timestamp without time zone) AND (event_date <= '2026-10-24 15:42:20'::timestamp without time zone) AND (NOT deleted))",
+                      "Recheck Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-26 11:48:45'::timestamp without time zone) AND (event_date <= '2026-10-25 11:48:45'::timestamp without time zone) AND (NOT deleted))",
                       "Rows Removed by Index Recheck": 0,
                       "Exact Heap Blocks": 313,
                       "Lossy Heap Blocks": 0,
@@ -1428,7 +1428,7 @@
                           "Plan Width": 0,
                           "Actual Rows": 600,
                           "Actual Loops": 1,
-                          "Index Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-25 15:42:20'::timestamp without time zone) AND (event_date <= '2026-10-24 15:42:20'::timestamp without time zone))",
+                          "Index Cond": "((city = 'Москва'::text) AND (event_date >= '2026-08-26 11:48:45'::timestamp without time zone) AND (event_date <= '2026-10-25 11:48:45'::timestamp without time zone))",
                           "Shared Hit Blocks": 0,
                           "Shared Read Blocks": 0,
                           "Shared Dirtied Blocks": 0,
@@ -1460,9 +1460,9 @@
           "Temp Read Blocks": 0,
           "Temp Written Blocks": 0
         },
-        "Planning Time": 0.214,
+        "Planning Time": 0.176,
         "Triggers": [],
-        "Execution Time": 2.585
+        "Execution Time": 2.626
       }
     }
   ]

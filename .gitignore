@@ -31,5 +31,5 @@ package-lock.json
 .kiro
 .kiro/**
 .claude
-.claude/**
 CLAUDE.md
+.claude/**

@@ -479,6 +479,36 @@ a:hover {
   gap: 6px;
   padding-top: 6px;
 }
+.category-dropdown {
+  position: relative;
+}
+.category-dropdown > summary {
+  display: flex;
+  justify-content: space-between;
+  list-style: none;
+  cursor: pointer;
+}
+.category-dropdown > summary::after {
+  content: '▾';
+}
+.category-dropdown-list {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--fg-15);
+  background: var(--bg);
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 0 48px;
+}
 .date-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -506,7 +536,7 @@ a:hover {
 /* event detail */
 .detail-grid {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 32px;
   padding: 24px 0 64px;
 }
@@ -515,11 +545,15 @@ a:hover {
 }
 .detail-meta-row {
   display: grid;
-  grid-template-columns: 140px 1fr;
+  grid-template-columns: 140px minmax(0, 1fr);
   gap: 16px;
   padding: 12px 0;
   border-bottom: 1px solid var(--fg-15);
   align-items: start;
+}
+.detail-meta-row > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .detail-meta-row .label {
   color: var(--fg-50);
@@ -536,6 +570,10 @@ a:hover {
   font-weight: 700;
   line-height: 1.2;
   margin: 0;
+  overflow-wrap: anywhere;
+}
+.detail-section p {
+  overflow-wrap: anywhere;
 }
 .detail-tags {
   display: flex;

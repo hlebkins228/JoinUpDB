@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw
 from psycopg import sql
 
 
-PASSWORD_HASH = "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi."
+PASSWORD_HASH = "$2b$10$kUKpD6vPg7f/SyJYXpMh2uaaAOD/YYSLk94AxhwXBGkVmJjuh4UKO"
 SEED_DATA = Path(__file__).with_name("seed_data.json")
 
 
@@ -64,10 +64,9 @@ def generate_data(user_count, now):
     for category_id, activity in enumerate(activities, 1):
         category_ids[category_id] = []
         for topic in activity["topics"]:
-            for format_name in source["category_formats"]:
-                child_id = len(data["category"][1]) + 1
-                category_ids[category_id].append(child_id)
-                data["category"][1].append((child_id, f"{topic}: {format_name}", category_id))
+            child_id = len(data["category"][1]) + 1
+            category_ids[category_id].append(child_id)
+            data["category"][1].append((child_id, topic, category_id))
     events_by_city = {city["name"]: [] for city in cities}
     for user_id in range(1, user_count + 1):
         city = cities[(user_id - 1) % len(cities)]

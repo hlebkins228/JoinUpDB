@@ -50,7 +50,7 @@ EXPLAIN = "explain (analyze, buffers, timing off, format json) " + QUERY
 def plot_chart(summaries):
     fig, ax = plt.subplots(figsize=(8, 5), layout="constrained")
     for variant, label, linestyle, marker in (
-        ("without_index", "Без индекса", "-", "^"),
+        ("without_index", "Без индекса", "-", "o"),
         ("with_index", "С индексом", "--", "s"),
     ):
         values = [s for s in summaries if s["variant"] == variant]
@@ -63,6 +63,7 @@ def plot_chart(summaries):
     ax.grid(alpha=0.3)
     ax.legend()
     fig.savefig(DIRECTORY / "index_chart.svg")
+    fig.savefig(DIRECTORY / "index_chart.pdf")
     plt.close(fig)
 
 

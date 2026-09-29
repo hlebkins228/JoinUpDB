@@ -1,0 +1,34 @@
+\clearpage
+\chapter*{ПРИЛОЖЕНИЕ А}
+\addcontentsline{toc}{chapter}{ПРИЛОЖЕНИЕ А. Сценарий создания объектов базы данных}
+\begin{center}
+    \textbf{Сценарий создания объектов базы данных}
+\end{center}
+
+Ниже приведены команды разделов \texttt{Up} миграций PostgreSQL в порядке их применения. Пароли в миграции ролей являются учебными значениями.
+
+\begingroup
+\lstset{basicstyle=\fontsize{9}{9.5}\selectfont\ttfamily, language=SQL, columns=fullflexible, breaklines=true, breakatwhitespace=true}
+
+\noindent\textbf{Основные таблицы}
+\lstinputlisting[firstline=2,lastline=75]{../app/migrations/20260330121114_init.sql}
+
+\noindent\textbf{Ограничение логина и роль пользователя}
+\lstinputlisting[firstline=2,lastline=5]{../app/migrations/20260409223512_change_user.sql}
+
+\noindent\textbf{Категории и уникальность участия}
+\lstinputlisting[firstline=2,lastline=19]{../app/migrations/20260511230000_categories_and_members.sql}
+
+\noindent\textbf{Отзывы}
+\lstinputlisting[firstline=2,lastline=18]{../app/migrations/20260601000000_reviews.sql}
+
+\noindent\textbf{Журнал и триггер удаления}
+\lstinputlisting[firstline=2,lastline=28]{../app/migrations/20260924000000_event_deletion_log.sql}
+
+\noindent\textbf{Индекс поиска}
+\lstinputlisting[firstline=2,lastline=5]{../app/migrations/20260924001000_event_search_index.sql}
+
+\noindent\textbf{Роли и права доступа}
+\lstinputlisting[firstline=2,lastline=79]{../app/migrations/20260924002000_roles.sql}
+
+\endgroup

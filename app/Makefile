@@ -1,5 +1,5 @@
 .PHONY: build migrate_up migrate_down migrate_create run_local run_cli stop_local swagger test integration_test install \
-	run_db stop_db run_mongo stop_mongo mongo_seed run_server seed_db check_roles index_research
+	run_db stop_db run_mongo stop_mongo mongo_seed run_server seed_db dicebear_images check_roles index_research
 
 POSTGRES_CONTAINER := join_up_db
 POSTGRES_IMAGE := postgres:16
@@ -90,6 +90,9 @@ migrate_create:
 
 seed_db:
 	@$(ENVS) POSTGRES_USER=joinup_admin POSTGRES_PASSWORD=$(POSTGRES_ADMIN_PASSWORD) python3 scripts/seed.py
+
+dicebear_images:
+	@$(ENVS) POSTGRES_USER=joinup_admin POSTGRES_PASSWORD=$(POSTGRES_ADMIN_PASSWORD) python3 scripts/dicebear_images.py
 
 check_roles:
 	@POSTGRES_CONTAINER=$(POSTGRES_CONTAINER) \

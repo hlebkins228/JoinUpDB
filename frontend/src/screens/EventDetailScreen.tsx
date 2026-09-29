@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Field } from '../components/Field';
 import { Select, TextArea, TextInput } from '../components/inputs';
-import { CategoryTag } from '../components/CategoryTag';
+import { CategoryDropdown } from '../components/CategoryDropdown';
 import { UploadEventCover } from '../components/UploadEventCover';
 import { MiniMap } from '../components/MiniMap';
 import { AddressPicker } from '../components/AddressPicker';
@@ -652,17 +652,7 @@ export function EventDetailScreen({
 
         {isNew && (
           <Field label="категории" optional>
-            <div className="filters-cats">
-              {categories.map((c) => (
-                <CategoryTag
-                  key={c.id}
-                  category={c}
-                  toggle
-                  active={activeCats.includes(c.id)}
-                  onClick={() => toggleCat(c.id)}
-                />
-              ))}
-            </div>
+            <CategoryDropdown categories={categories} activeCats={activeCats} onToggle={toggleCat} />
           </Field>
         )}
 

@@ -7,6 +7,8 @@
 \newcolumntype{Y}{>{\centering\arraybackslash}X}
 
 \ExecuteBibliographyOptions{sorting=none}
+\AtBeginBibliography{\small\raggedright}
+\renewcommand{\makebibliography}{\printbibliography[heading=bibintoc,title=СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ]}
 
 \titleformat{\chapter}[block]{\hspace{\parindent}\large\bfseries}{\thechapter}{0.5em}{\large\bfseries\raggedright\hyphenpenalty=10000\exhyphenpenalty=10000}
 \titleformat{\section}[block]{\hspace{\parindent}\large\bfseries}{\thesection}{0.5em}{\large\bfseries\raggedright\hyphenpenalty=10000\exhyphenpenalty=10000}

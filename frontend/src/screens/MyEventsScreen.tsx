@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
-import { EventCard } from '../components/EventCard';
-import { EventSectionDivider } from '../components/EventSectionDivider';
+import { useEffect, useState } from 'react';
+import { PaginatedEvents } from '../components/PaginatedEvents';
 import { getCreatedEvents } from '../api/events';
 import type { EventResponse } from '../types';
 import { ApiError } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
-import { isPastDate } from '../lib/format';
 
 interface MyEventsScreenProps {
   onOpenEvent(id: number): void;
@@ -48,15 +46,6 @@ export function MyEventsScreen({
     };
   }, [user, refreshKey]);
 
-  const activeEvents = useMemo(
-    () => events.filter((event) => !isPastDate(event.event_time)),
-    [events],
-  );
-  const pastEvents = useMemo(
-    () => events.filter((event) => isPastDate(event.event_time)),
-    [events],
-  );
-
   return (
     <div className="container">
       <div className="section-head">
@@ -72,29 +61,7 @@ export function MyEventsScreen({
       ) : events.length === 0 ? (
         <div className="empty-state">вы ещё не создавали событий</div>
       ) : (
-        <>
-          {activeEvents.map((ev) => (
-            <EventCard
-              key={ev.id}
-              event={ev}
-              onOpen={onOpenEvent}
-              onOpenUser={onOpenUser}
-            />
-          ))}
-          {pastEvents.length > 0 && (
-            <>
-              <EventSectionDivider label="прошедшие события" />
-              {pastEvents.map((ev) => (
-                <EventCard
-                  key={ev.id}
-                  event={ev}
-                  onOpen={onOpenEvent}
-                  onOpenUser={onOpenUser}
-                />
-              ))}
-            </>
-          )}
-        </>
+        <PaginatedEvents events={events} onOpen={onOpenEvent} onOpenUser={onOpenUser} />
       )}
     </div>
   );

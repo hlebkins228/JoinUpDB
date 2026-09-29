@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { EventCard } from '../components/EventCard';
-import { EventSectionDivider } from '../components/EventSectionDivider';
+import { useEffect, useState } from 'react';
+import { PaginatedEvents } from '../components/PaginatedEvents';
 import { getJoinedEvents } from '../api/events';
 import type { EventResponse } from '../types';
 import { ApiError } from '../api/client';
-import { isPastDate } from '../lib/format';
 
 interface JoiningScreenProps {
   onOpenEvent(id: number): void;
@@ -39,15 +37,6 @@ export function JoiningScreen({ onOpenEvent, onOpenUser, refreshKey }: JoiningSc
     };
   }, [refreshKey]);
 
-  const activeEvents = useMemo(
-    () => events.filter((event) => !isPastDate(event.event_time)),
-    [events],
-  );
-  const pastEvents = useMemo(
-    () => events.filter((event) => isPastDate(event.event_time)),
-    [events],
-  );
-
   return (
     <div className="container">
       <div className="section-head">
@@ -60,29 +49,7 @@ export function JoiningScreen({ onOpenEvent, onOpenUser, refreshKey }: JoiningSc
       ) : events.length === 0 ? (
         <div className="empty-state">вы ещё ни к чему не присоединились</div>
       ) : (
-        <>
-          {activeEvents.map((ev) => (
-            <EventCard
-              key={ev.id}
-              event={ev}
-              onOpen={onOpenEvent}
-              onOpenUser={onOpenUser}
-            />
-          ))}
-          {pastEvents.length > 0 && (
-            <>
-              <EventSectionDivider label="прошедшие события" />
-              {pastEvents.map((ev) => (
-                <EventCard
-                  key={ev.id}
-                  event={ev}
-                  onOpen={onOpenEvent}
-                  onOpenUser={onOpenUser}
-                />
-              ))}
-            </>
-          )}
-        </>
+        <PaginatedEvents events={events} onOpen={onOpenEvent} onOpenUser={onOpenUser} />
       )}
     </div>
   );

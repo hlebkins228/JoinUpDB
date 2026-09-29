@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Field } from '../components/Field';
 import { Select, TextInput } from '../components/inputs';
-import { CategoryTag } from '../components/CategoryTag';
-import { EventCard } from '../components/EventCard';
-import { EventSectionDivider } from '../components/EventSectionDivider';
+import { CategoryDropdown } from '../components/CategoryDropdown';
+import { PaginatedEvents } from '../components/PaginatedEvents';
 import { CITIES } from '../lib/constants';
 import { getCategories, searchEvents } from '../api/events';
-import { fromInputDate, isPastDate } from '../lib/format';
+import { fromInputDate } from '../lib/format';
 import { ApiError } from '../api/client';
 import type { Category, EventResponse } from '../types';
 
@@ -36,15 +35,6 @@ export function SearchScreen({
   const cityOptions = useMemo(
     () => [{ value: '', label: 'все города' }, ...CITIES.map((c) => ({ value: c, label: c }))],
     [],
-  );
-
-  const activeEvents = useMemo(
-    () => events.filter((ev) => !isPastDate(ev.event_time)),
-    [events],
-  );
-  const pastEvents = useMemo(
-    () => events.filter((ev) => isPastDate(ev.event_time)),
-    [events],
   );
 
   async function runSearch() {
@@ -128,17 +118,7 @@ export function SearchScreen({
           </div>
         </Field>
         <Field label="категории">
-          <div className="filters-cats">
-            {categories.map((c) => (
-              <CategoryTag
-                key={c.id}
-                category={c}
-                toggle
-                active={activeCats.includes(c.id)}
-                onClick={() => toggleCat(c.id)}
-              />
-            ))}
-          </div>
+          <CategoryDropdown categories={categories} activeCats={activeCats} onToggle={toggleCat} />
         </Field>
       </div>
 
@@ -155,31 +135,12 @@ export function SearchScreen({
       ) : events.length === 0 ? (
         <div className="empty-state">ничего не нашли</div>
       ) : (
-        <>
-          {activeEvents.map((ev) => (
-            <EventCard
-              key={ev.id}
-              event={ev}
-              onOpen={onOpenEvent}
-              onOpenUser={onOpenUser}
-              showParticipantUsers={false}
-            />
-          ))}
-          {pastEvents.length > 0 && (
-            <>
-              <EventSectionDivider label="прошедшие события" />
-              {pastEvents.map((ev) => (
-                <EventCard
-                  key={ev.id}
-                  event={ev}
-                  onOpen={onOpenEvent}
-                  onOpenUser={onOpenUser}
-                  showParticipantUsers={false}
-                />
-              ))}
-            </>
-          )}
-        </>
+        <PaginatedEvents
+          events={events}
+          onOpen={onOpenEvent}
+          onOpenUser={onOpenUser}
+          showParticipantUsers={false}
+        />
       )}
     </div>
   );

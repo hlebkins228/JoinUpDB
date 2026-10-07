@@ -2,12 +2,10 @@ package postgres
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Pool struct {
-	pool *pgxpool.Pool
+	pool sqlRun
 }
 
 func (p *Pool) runFromCtx(ctx context.Context) (sqlRun, error) {

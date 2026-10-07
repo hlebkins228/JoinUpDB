@@ -13,6 +13,7 @@
 *.toc
 *.bbl
 *.bib
+!report/biblio.bib
 *.bcf
 *.big
 

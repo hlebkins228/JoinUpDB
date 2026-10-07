@@ -121,3 +121,31 @@ integration_test:
 swagger:
 	@go run github.com/swaggo/swag/cmd/swag@latest init -g main.go -d ./cmd/server,./internal/controller/handlers,./internal/controller/dto,./internal/models -o docs --parseGoList=false
 
+
+.PHONY: allure-test allure-serve test-report test-report-serve
+
+ALLURE_OUTPUT_PATH ?= $(CURDIR)
+ALLURE_OUTPUT_FOLDER ?= allure-results
+ALLURE_TEST_PACKAGES := ./internal/service ./internal/repository/postgres
+ALLURE_VERSION := 2.46.1
+ALLURE_CLI := .test-tools/node_modules/.bin/allure
+TEST_REPORT_DIR := $(CURDIR)/test-report
+TEST_REPORT_PORT ?= 9001
+
+allure-test:
+	python3 scripts/test_report.py prepare --results-dir "$(ALLURE_OUTPUT_PATH)/$(ALLURE_OUTPUT_FOLDER)" --report-dir "$(TEST_REPORT_DIR)"
+	ALLURE_OUTPUT_PATH="$(ALLURE_OUTPUT_PATH)" ALLURE_OUTPUT_FOLDER="$(ALLURE_OUTPUT_FOLDER)" go test -tags allure $(ALLURE_TEST_PACKAGES) -run '^TestAllure' -count=1 -v -coverpkg=./internal/service,./internal/repository/postgres -coverprofile="$(TEST_REPORT_DIR)/coverage.out"
+	python3 scripts/test_report.py build --results-dir "$(ALLURE_OUTPUT_PATH)/$(ALLURE_OUTPUT_FOLDER)" --report-dir "$(TEST_REPORT_DIR)"
+
+$(ALLURE_CLI):
+	npm install --prefix .test-tools --no-package-lock --no-audit --no-fund allure-commandline@$(ALLURE_VERSION)
+	test -x $(ALLURE_CLI)
+	touch $(ALLURE_CLI)
+
+test-report: allure-test $(ALLURE_CLI)
+	$(ALLURE_CLI) generate "$(ALLURE_OUTPUT_PATH)/$(ALLURE_OUTPUT_FOLDER)" --clean -o "$(TEST_REPORT_DIR)/allure"
+
+allure-serve: test-report-serve
+
+test-report-server: test-report
+	python3 -m http.server $(TEST_REPORT_PORT) --bind 127.0.0.1 --directory "$(TEST_REPORT_DIR)"

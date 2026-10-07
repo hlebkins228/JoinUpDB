@@ -5,12 +5,15 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type UOW struct {
-	pool *pgxpool.Pool
+	pool txBeginner
+}
+
+type txBeginner interface {
+	BeginTx(ctx context.Context, options pgx.TxOptions) (pgx.Tx, error)
 }
 
 type uowKey struct{}
@@ -21,7 +24,7 @@ type sqlRun interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
-func NewUOW(pool *pgxpool.Pool) UOW {
+func NewUOW(pool txBeginner) UOW {
 	return UOW{pool: pool}
 }
 

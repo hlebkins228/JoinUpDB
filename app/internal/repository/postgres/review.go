@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const pgUniqueViolationCode = "23505"
@@ -17,7 +16,7 @@ type ReviewRepo struct {
 	Pool
 }
 
-func NewReviewRepo(pool *pgxpool.Pool) ReviewRepo {
+func NewReviewRepo(pool sqlRun) ReviewRepo {
 	return ReviewRepo{Pool: Pool{pool: pool}}
 }
 

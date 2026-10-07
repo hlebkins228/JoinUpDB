@@ -149,6 +149,9 @@ logging:
 | `make check_roles` | Проверить роли, созданные миграцией; сохранить `scripts/permissions.csv`. |
 | `make index_research` | Через `python3` выполнить по 500 замеров с индексом/без него на 1000, 2000, 5000 и 10000 событий; построить график matplotlib. |
 | `make test` | Существующие unit-тесты `./internal/service`, без БД. |
+| `make allure-test` | Девять unit-сценариев ЛР1 для отзывов: классические, лондонские и PostgreSQL-репозиторий; без БД, результаты в `allure-results`. |
+| `make allure-serve`, `make test-report-serve` | Запустить тесты ЛР1 и веб-отчёт с Allure и покрытием на localhost:9001; Go, Python, npm и Java. Allure CLI автоматически устанавливается в `.test-tools`. |
+| `make test-report` | Запустить сценарии ЛР1 и сохранить HTML Allure и покрытия в `test-report`, без веб-сервера. |
 | `make integration_test` | Существующие HTTP/PostgreSQL-тесты через testcontainers, нужен Docker. |
 
 Наполнение использует Faker (`ru_RU`, seed=42), `scripts/seed_data.json` и Pillow для PNG. В прикладных таблицах более 1000 строк, кроме справочника из 99 категорий и журнала триггера примерно на 500 строк. Удаляются 5% событий. Учебный вход: `user_1` (admin), `user_2` (user), пароль `password`.
@@ -165,7 +168,7 @@ Swagger UI — `/swagger/index.html`. Пакет `JoinUp/docs` импортир�
 
 ## Проверки и навигация при изменениях
 
-Unit-тесты находятся в `internal/service/event_test.go` и `user_test.go`, используют testify и ручные моки из `event_test.go`. Интеграционные тесты в `internal/integration_test/server_test.go` поднимают `postgres:16-alpine`, применяют встроенные миграции и вызывают Echo через httptest. `go test ./...` включает их, поэтому требует Docker и сгенерированный Swagger.
+Unit-тесты находятся в `internal/service/event_test.go` и `user_test.go`, используют testify и ручные моки из `event_test.go`. Allure-сценарии отзывов и описание запуска — в `TESTING.md`; фикстуры управляются BeforeAll/BeforeEach/AfterEach/AfterAll. Классические и репозиторные сценарии используют настоящее PostgreSQL API репозитория/UOW над `internal/testutil/review_connection.go` с хранилищем и транзакциями в памяти. `Pool`/`NewReviewRepo` принимают `sqlRun`, `NewUOW` — интерфейс BeginTx; сервер передаёт обычный pgxpool. Хелперы testutil доступны только с build tag `allure`. Интеграционные тесты в `internal/integration_test/server_test.go` поднимают `postgres:16-alpine`, применяют встроенные миграции и вызывают Echo через httptest. `go test ./...` включает их, поэтому требует Docker и сгенерированный Swagger.
 
 В интеграционных сценариях создания и обновления есть фиксированные даты мая/июля 2026 года, тогда как сервис запрещает события в прошлом. При разборе падений сначала сопоставь даты с текущим временем; не приписывай такие ошибки новой правке автоматически. Наличие команд в этой памятке не означает, что проверки уже выполнены или проходят.
 

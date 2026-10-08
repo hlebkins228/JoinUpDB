@@ -114,7 +114,7 @@ func TestCreateEvent(t *testing.T) {
 		body := map[string]any{
 			"name":              "Moscow meetup",
 			"desc":              "backend event",
-			"event_time":        time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC).Format(time.RFC3339),
+			"event_time":        time.Now().UTC().Add(24 * time.Hour).Truncate(time.Second).Format(time.RFC3339),
 			"telegram_chat_url": "https://t.me/joinup_test",
 			"city":              "Moscow",
 			"location": map[string]any{
@@ -132,10 +132,21 @@ func TestCreateEvent(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 		assert.Greater(t, resp.ID, 0)
 
-		var name string
-		err := testApp.pool.QueryRow(ctx, `select name from event where id = $1`, resp.ID).Scan(&name)
+		var name, city, locationName, address string
+		var creatorID int
+		var eventTime time.Time
+		err := testApp.pool.QueryRow(ctx, `
+			select e.name, e.city, e.creator_id, e.event_date, l.name, l.address
+			from event e join location l on l.id = e.location_id
+			where e.id = $1
+		`, resp.ID).Scan(&name, &city, &creatorID, &eventTime, &locationName, &address)
 		require.NoError(t, err)
 		assert.Equal(t, "Moscow meetup", name)
+		assert.Equal(t, "Moscow", city)
+		assert.Equal(t, 1, creatorID)
+		assert.Equal(t, body["event_time"], eventTime.UTC().Format(time.RFC3339))
+		assert.Equal(t, "Center", locationName)
+		assert.Equal(t, "Red Square 1", address)
 	})
 
 	t.Run("not found image", func(t *testing.T) {
@@ -144,7 +155,7 @@ func TestCreateEvent(t *testing.T) {
 		body := map[string]any{
 			"name":       "Moscow meetup",
 			"desc":       "backend event",
-			"event_time": time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC).Format(time.RFC3339),
+			"event_time": time.Now().UTC().Add(24 * time.Hour).Truncate(time.Second).Format(time.RFC3339),
 			"city":       "Moscow",
 			"image_id":   9999,
 			"location": map[string]any{
@@ -278,8 +289,6 @@ func prepareTestDB(t *testing.T) context.Context {
 	ctx := context.Background()
 
 	resetQueries := []string{
-		`truncate table subscribe restart identity cascade`,
-		`truncate table preset restart identity cascade`,
 		`truncate table category restart identity cascade`,
 		`truncate table member restart identity cascade`,
 		`truncate table event restart identity cascade`,

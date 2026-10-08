@@ -1,16 +1,13 @@
+\RequirePackage{cmap}
 \documentclass{bmstu}
 
 \input{00-preambula}
 \bibliography{biblio}
+\documentmeta{РПЗ к КР}{М.~В.~Козин}{ИУ7-64Б}{Разработка базы данных для поиска и организации досуга}
 
 \begin{document}
-    \makecourseworktitle
-    {Информатика и системы управления}
-    {Программное обеспечение ЭВМ и информационные технологии}
-    {Разработка базы данных для поиска и организации досуга}
-    {М.~В.~Козин/ИУ7-64Б}
-    {Н.~В.~Назаренко}
-    {}
+    \includepdf[pages=1,pagecommand={}]{title.pdf}
+    \setcounter{page}{2}
 
     \input{01-essay}
     \maketableofcontents

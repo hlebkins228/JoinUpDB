@@ -1,5 +1,5 @@
 // DBML schema for JoinUp database diagram
-// Tables and relationships derived from app/migrations/20260330121114_name_create_event_table.sql
+// Current schema derived from app/migrations/*.sql
 
 Table image {
   id int [pk, increment]
@@ -18,26 +18,33 @@ Table location {
 Table users {
   id int [pk, increment]
   name text [not null]
-  age int [not null, note: "check (age > 0)"]
-  login text [not null]
+  age int [not null, check: `age > 0`]
+  login text [not null, unique]
   password text [not null]
   created_at timestamp [not null]
   city text [not null]
-  telegram_login text [not null]
-  avatar_id int [not null]
+  telegram_login text
+  avatar_id int
+  role text [not null, default: 'user']
 }
 
 Table event {
   id int [pk, increment]
   name text [not null]
-  description text [not null]
+  description text
   created_at timestamp [not null]
+  updated_at timestamp [not null]
   event_date timestamp [not null]
-  telegram_chat_url text [not null]
+  telegram_chat_url text
   city text [not null]
   creator_id int [not null]
   location_id int [not null]
-  image_id int [not null]
+  image_id int
+  deleted boolean [not null, default: false]
+
+  indexes {
+    (city, event_date, id) [name: 'event_search_city_date_idx', note: 'Partial index: WHERE deleted = false']
+  }
 }
 
 Table member {
@@ -45,63 +52,64 @@ Table member {
   user_id int [not null]
   event_id int [not null]
   role text [not null]
+
+  indexes {
+    (user_id, event_id) [unique, name: 'member_user_event_unique']
+  }
 }
 
 Table category {
   id int [pk, increment]
-  event_id int [not null]
   subcategory_id int
-  name text [not null]
+  name text [not null, unique]
 }
 
-Table preset {
-  id int [pk, increment]
-  name text [not null]
+Table event_category {
+  event_id int [not null]
   category_id int [not null]
-  creator_id int [not null]
+
+  indexes {
+    (event_id, category_id) [pk]
+  }
 }
 
-Table subscribe {
-  id int [pk, increment]
-  subscriber_id int [not null]
-  user_id int [not null]
-  subscribe_at timestamp [not null]
+Table review {
+  id bigint [pk, increment]
+  event_id bigint [not null]
+  author_id bigint [not null]
+  rating integer [not null]
+  text text [not null]
+  created_at timestamp [not null, default: `now() at time zone 'utc'`]
+
+  indexes {
+    (event_id, author_id) [unique, name: 'review_event_author_unique']
+    event_id [name: 'review_event_id_idx']
+    event_id [name: 'review_event_creator_lookup_idx']
+  }
+
+  checks {
+    `rating between 1 and 5` [name: 'review_rating_check']
+    `char_length(text) <= 2000` [name: 'review_text_length_check']
+  }
 }
 
-// Relationships
-// users.avatar_id -> image.id
+Table event_deletion_log {
+  id bigint [pk, increment]
+  event_id int [not null]
+  deleted_at timestamp [not null, default: `now() at time zone 'utc'`]
+
+  Note: 'Filled by event_deletion_log_trigger when event.deleted changes from false to true.'
+}
+
 Ref: image.id < users.avatar_id
-
-// event.creator_id -> users.id (ON DELETE CASCADE)
 Ref: users.id < event.creator_id [delete: cascade]
-
-// event.location_id -> location.id (ON DELETE CASCADE)
-Ref: location.id < event.location_id [delete: cascade]
-
-// event.image_id -> image.id
+Ref: location.id < event.location_id
 Ref: image.id < event.image_id
-
-// member.user_id -> users.id (ON DELETE CASCADE)
 Ref: users.id < member.user_id [delete: cascade]
-
-// member.event_id -> event.id (ON DELETE CASCADE)
 Ref: event.id < member.event_id [delete: cascade]
-
-// category.event_id -> event.id (ON DELETE CASCADE)
-Ref: event.id < category.event_id [delete: cascade]
-
-// category.subcategory_id -> category.id (ON DELETE CASCADE)
-Ref: category.id < category.subcategory_id [delete: cascade]
-
-// preset.category_id -> category.id (ON DELETE CASCADE)
-Ref: category.id < preset.category_id [delete: cascade]
-
-// preset.creator_id -> users.id (ON DELETE CASCADE)
-Ref: users.id < preset.creator_id [delete: cascade]
-
-// subscribe.subscriber_id -> users.id (ON DELETE CASCADE)
-Ref: users.id < subscribe.subscriber_id [delete: cascade]
-
-// subscribe.user_id -> users.id (ON DELETE CASCADE)
-Ref: users.id < subscribe.user_id [delete: cascade]
-
+Ref: category.id < category.subcategory_id
+Ref: event.id < event_category.event_id [delete: cascade]
+Ref: category.id < event_category.category_id
+Ref: event.id < review.event_id [delete: cascade]
+Ref: users.id < review.author_id [delete: cascade]
+Ref: event.id < event_deletion_log.event_id [delete: cascade]

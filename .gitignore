@@ -34,3 +34,5 @@ package-lock.json
 .claude
 CLAUDE.md
 .claude/**
+
+*.run.xml

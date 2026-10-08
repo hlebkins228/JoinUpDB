@@ -38,16 +38,12 @@ def generate_data(user_count, now):
         "event": ("id, name, description, created_at, updated_at, event_date, telegram_chat_url, city, creator_id, location_id, image_id, deleted", []),
         "member": ("id, user_id, event_id, role", []),
         "event_category": ("event_id, category_id", []),
-        "preset": ("id, name, category_id, creator_id", []),
-        "subscribe": ("id, subscriber_id, user_id, subscribe_at", []),
         "review": ("id, event_id, author_id, rating, text, created_at", []),
     }
     cities = source["cities"]
     activities = source["activities"]
-    users_by_city = {city["name"]: [] for city in cities}
     for user_id in range(1, user_count + 1):
         city = cities[(user_id - 1) % len(cities)]
-        users_by_city[city["name"]].append(user_id)
         data["users"][1].append((
             user_id, fake.name(), rng.randint(18, 65), f"user_{user_id}", PASSWORD_HASH,
             now - timedelta(days=365), city["name"], f"joinup_{user_id}", user_id,
@@ -89,8 +85,6 @@ def generate_data(user_count, now):
             data["event_category"][1].append((event_id, category_id))
             data["event_category"][1].append((event_id, rng.choice(category_ids[category_id])))
             events_by_city[city["name"]].append((event_id, user_id, event_date))
-        favourite = rng.randrange(len(activities)) + 1
-        data["preset"][1].append((user_id, activities[favourite - 1]["title"], favourite, user_id))
     for user_id in range(1, user_count + 1):
         city = cities[(user_id - 1) % len(cities)]["name"]
         other_events = [event for event in events_by_city[city] if event[1] != user_id]
@@ -101,9 +95,6 @@ def generate_data(user_count, now):
                 text = rng.choice(source["reviews"][str(rating)])
                 review_date = min(event_date + timedelta(hours=rng.randint(3, 48)), now)
                 data["review"][1].append((len(data["review"][1]) + 1, event_id, user_id, rating, text, review_date))
-        others = [other for other in users_by_city[city] if other != user_id]
-        for target_id in rng.sample(others, rng.randint(2, 5)):
-            data["subscribe"][1].append((len(data["subscribe"][1]) + 1, user_id, target_id, now - timedelta(days=rng.randint(1, 90))))
     return data
 
 
@@ -112,7 +103,7 @@ def main():
     data = generate_data(5001, now)
     with psycopg.connect(**connection_params()) as connection:
         with connection.cursor() as cursor:
-            cursor.execute("truncate event_deletion_log, review, subscribe, preset, event_category, category, member, event, users, location, image")
+            cursor.execute("truncate event_deletion_log, review, event_category, category, member, event, users, location, image")
             for table, (columns, rows) in data.items():
                 with cursor.copy(sql.SQL("copy {} ({}) from stdin").format(sql.Identifier(table), sql.SQL(columns))) as copy:
                     for row in rows:

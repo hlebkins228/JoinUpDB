@@ -1,0 +1,70 @@
+\pdfminorversion=7
+\documentclass[a4paper,12pt]{extreport}
+\usepackage{cmap}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english,russian]{babel}
+\usepackage{tempora}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx,pdfpages,float}
+\usepackage{geometry,setspace,indentfirst}
+\usepackage{titlesec,tocloft,caption}
+\usepackage{array,tabularx,longtable,booktabs,multirow}
+\usepackage{listings,xcolor,enumitem}
+\usepackage{tikz,pgfplots}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc}
+\usepackage{lastpage}
+\usepackage[figure,table]{totalcount}
+\PassOptionsToPackage{obeyspaces}{url}
+\usepackage[unicode,hidelinks,breaklinks]{hyperref}
+\usepackage{xurl}
+\geometry{left=30mm,right=10mm,top=20mm,bottom=20mm}
+\onehalfspacing
+\setlength{\parindent}{1.25cm}
+\setlength{\emergencystretch}{2em}
+\frenchspacing
+\raggedbottom
+\clubpenalty=10000\widowpenalty=10000\displaywidowpenalty=10000\brokenpenalty=10000
+\titleformat{\chapter}[block]{\large\bfseries}{\thechapter}{0.6em}{}
+\titleformat{name=\chapter,numberless}[block]{\large\bfseries\centering}{}{0pt}{}
+\titleformat{\section}{\normalsize\bfseries}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.6em}{}
+\titlespacing*{\chapter}{\parindent}{-8pt}{16pt}
+\titlespacing*{\section}{\parindent}{12pt}{6pt}
+\titlespacing*{\subsection}{\parindent}{8pt}{4pt}
+\renewcommand{\cftchapleader}{\cftdotfill{\cftdotsep}}
+\renewcommand{\cfttoctitlefont}{\hfill\large\bfseries}
+\renewcommand{\cftaftertoctitle}{\hfill\mbox{}}
+\setlength{\cftbeforetoctitleskip}{0pt}
+\setlength{\cftaftertoctitleskip}{18pt}
+\setcounter{tocdepth}{1}
+\addto\captionsrussian{\renewcommand{\contentsname}{СОДЕРЖАНИЕ}\renewcommand{\figurename}{Рисунок}\renewcommand{\bibname}{СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ}}
+\DeclareCaptionLabelSeparator{dash}{~---~}
+\captionsetup{labelsep=dash,font=small}
+\captionsetup[figure]{justification=centering}
+\captionsetup[table]{justification=raggedright,singlelinecheck=false}
+\setlist[itemize]{label=---,leftmargin=1.25cm,itemsep=0pt,topsep=3pt}
+\setlist[enumerate]{label=\arabic*),leftmargin=1.25cm,itemsep=0pt,topsep=3pt}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\renewcommand{\arraystretch}{1.15}
+\newcommand{\unnumberedchapter}[1]{\chapter*{#1}\addcontentsline{toc}{chapter}{#1}}
+\newcommand{\code}[1]{{\fontencoding{T1}\selectfont\nolinkurl{#1}}}
+\newcommand{\blankcell}{\rule{0pt}{3.1ex}\hspace{1.1cm}}
+\newcommand{\fillline}{\par\noindent\rule{\linewidth}{0.3pt}\par\vspace{8pt}}
+\newcommand{\conclusionplaceholder}[1]{\par\noindent\begin{minipage}{\linewidth}\textbf{#1}\par\fillline\fillline\end{minipage}\par}
+\newcommand{\graphplaceholder}[2]{\begin{figure}[H]\centering
+\fbox{\begin{minipage}[c][5.4cm][c]{0.92\linewidth}\centering\small
+Место для графика по результатам измерений\par\medskip #1\end{minipage}}
+\caption{#2}\end{figure}}
+\lstset{language=SQL,basicstyle=\fontencoding{T1}\selectfont\footnotesize\ttfamily,keywordstyle=\bfseries,
+ commentstyle=\itshape,columns=fullflexible,keepspaces=true,showstringspaces=false,
+ breaklines=true,breakatwhitespace=false,frame=single,rulecolor=\color{black!40},
+ numbers=none,tabsize=4,captionpos=t,aboveskip=8pt,belowskip=8pt}
+\pgfplotsset{compat=1.18}
+\tikzset{block/.style={draw,rectangle,align=center,text width=6cm,minimum height=9mm,font=\small},
+ decision/.style={draw,diamond,aspect=3,align=center,font=\small,inner sep=1pt},
+ terminal/.style={draw,rounded corners=4mm,align=center,minimum width=3cm,minimum height=8mm,font=\small},
+ flow/.style={-{Stealth[length=2mm]},thick}}
+\makeatletter\renewcommand{\@biblabel}[1]{#1.}\makeatother
+\hypersetup{pdftitle={Разработка базы данных для хранения и обработки результатов гоночных заездов мировых чемпионатов},pdfauthor={Яковлев Роман Денисович},pdfsubject={Курсовая работа по дисциплине «Базы данных»}}

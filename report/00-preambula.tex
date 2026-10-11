@@ -19,6 +19,9 @@
 \setlength{\emergencystretch}{2em}
 \frenchspacing
 \raggedbottom
+\makeatletter
+\setlength{\@fptop}{0pt}
+\makeatother
 \clubpenalty=10000
 \widowpenalty=10000
 \displaywidowpenalty=10000
@@ -28,15 +31,15 @@
 \titleformat{name=\chapter,numberless}[block]{\large\bfseries\centering}{}{0pt}{\hyphenpenalty=10000\exhyphenpenalty=10000}
 \titleformat{\section}{\normalsize\bfseries}{\thesection}{0.6em}{\hyphenpenalty=10000\exhyphenpenalty=10000}
 \titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.6em}{\hyphenpenalty=10000\exhyphenpenalty=10000}
-\titlespacing*{\chapter}{1.25cm}{-8pt}{16pt}
-\titlespacing*{name=\chapter,numberless}{0pt}{-8pt}{16pt}
+\titlespacing*{\chapter}{1.25cm}{-24pt}{16pt}
+\titlespacing*{name=\chapter,numberless}{0pt}{-24pt}{16pt}
 \titlespacing*{\section}{1.25cm}{12pt}{6pt}
 \titlespacing*{\subsection}{1.25cm}{8pt}{4pt}
 
 \renewcommand{\cftchapleader}{\cftdotfill{\cftdotsep}}
 \renewcommand{\cfttoctitlefont}{\hfill\large\bfseries}
 \renewcommand{\cftaftertoctitle}{\hfill\mbox{}}
-\setlength{\cftbeforetoctitleskip}{0pt}
+\setlength{\cftbeforetoctitleskip}{-20pt}
 \setlength{\cftaftertoctitleskip}{18pt}
 \setcounter{tocdepth}{1}
 \renewcommand{\maketableofcontents}{%
@@ -68,6 +71,7 @@
 \lstset{language=SQL,basicstyle=\footnotesize\ttfamily,keywordstyle=\bfseries,
     commentstyle=\itshape,columns=fullflexible,keepspaces=true,showstringspaces=false,
     breaklines=true,breakatwhitespace=false,frame=single,rulecolor=\color{black!40},
+    framesep=3pt,framerule=0.4pt,xleftmargin=4pt,xrightmargin=4pt,
     numbers=none,tabsize=4,captionpos=t,aboveskip=8pt,belowskip=8pt,
     abovecaptionskip=3pt,belowcaptionskip=0pt,float=false}
 

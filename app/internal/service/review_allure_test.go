@@ -131,9 +131,7 @@ func TestAllureReviewServiceClassic(t *testing.T) {
 	r.BeforeEach(func(pt provider.T) {
 		pt.WithNewStep("BeforeEach — очистка состояния теста", func(_ provider.StepCtx) {
 			f.connection.Reset()
-			pt.Epic("JoinUp — ЛР1")
-			pt.Feature("ReviewService")
-			pt.Tags("classic", "unit", "reviews", "fake", "stub")
+			pt.Tags("classic")
 		})
 	})
 	r.NewTest("Создание: 2000 Unicode-символов и удаление пробелов", func(pt provider.T) {

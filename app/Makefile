@@ -145,7 +145,5 @@ $(ALLURE_CLI):
 test-report: allure-test $(ALLURE_CLI)
 	$(ALLURE_CLI) generate "$(ALLURE_OUTPUT_PATH)/$(ALLURE_OUTPUT_FOLDER)" --clean -o "$(TEST_REPORT_DIR)/allure"
 
-allure-serve: test-report-serve
-
 test-report-server: test-report
 	python3 -m http.server $(TEST_REPORT_PORT) --bind 127.0.0.1 --directory "$(TEST_REPORT_DIR)"

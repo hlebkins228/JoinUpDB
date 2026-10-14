@@ -102,6 +102,31 @@ func (s *EventService) UpdateEvent(ctx context.Context, req *dto.UpdateEventRequ
 		}
 	}
 
+	if req.CategoryIDs != nil {
+		ctx, err = s.uow.BeginTx(ctx)
+		if err != nil {
+			return err
+		}
+		defer s.uow.Rollback(ctx)
+
+		categories, err := s.eventRepo.ListCategories(ctx)
+		if err != nil {
+			return err
+		}
+		byID := make(map[int]*models.Category, len(categories))
+		for _, category := range categories {
+			byID[category.ID] = category
+		}
+		event.Categories = make([]models.Category, 0, len(req.CategoryIDs))
+		for _, id := range req.CategoryIDs {
+			category, ok := byID[id]
+			if !ok {
+				return fmt.Errorf("%w: category with id = %d not found", exceptions.ErrNotExists, id)
+			}
+			event.Categories = append(event.Categories, *category)
+		}
+	}
+
 	event.UpdatedAt = now
 
 	if err := s.eventRepo.UpdateEvent(ctx, &event); errors.Is(err, sql.ErrNoRows) {
@@ -110,6 +135,9 @@ func (s *EventService) UpdateEvent(ctx context.Context, req *dto.UpdateEventRequ
 		return err
 	}
 
+	if req.CategoryIDs != nil {
+		return s.uow.Commit(ctx)
+	}
 	return nil
 }
 

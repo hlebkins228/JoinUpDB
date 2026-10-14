@@ -4,14 +4,15 @@ import type { Category } from '../types';
 interface CategoryDropdownProps {
   categories: Category[];
   activeCats: number[];
+  emptyLabel?: string;
   onToggle(id: number): void;
 }
 
-export function CategoryDropdown({ categories, activeCats, onToggle }: CategoryDropdownProps) {
+export function CategoryDropdown({ categories, activeCats, emptyLabel = 'все категории', onToggle }: CategoryDropdownProps) {
   return (
     <details className="category-dropdown">
       <summary className="select">
-        {activeCats.length ? `выбрано: ${activeCats.length}` : 'все категории'}
+        {activeCats.length ? `выбрано: ${activeCats.length}` : emptyLabel}
       </summary>
       <div className="category-dropdown-list filters-cats">
         {categories.map((category) => (

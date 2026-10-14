@@ -7,11 +7,12 @@ import { CITIES } from '../lib/constants';
 import { getCategories, searchEvents } from '../api/events';
 import { fromInputDate } from '../lib/format';
 import { ApiError } from '../api/client';
+import { useAuth } from '../auth/AuthContext';
 import type { Category, EventResponse } from '../types';
 
 interface SearchScreenProps {
   onOpenEvent(id: number): void;
-  onOpenUser(id: number): void;
+  onOpenUser?: (id: number) => void;
   onCreateEvent(): void;
   refreshKey?: number;
 }
@@ -22,6 +23,7 @@ export function SearchScreen({
   onCreateEvent,
   refreshKey,
 }: SearchScreenProps) {
+  const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [city, setCity] = useState('');
   const [from, setFrom] = useState('');
@@ -124,9 +126,11 @@ export function SearchScreen({
 
       <div className="section-head">
         <h2>события</h2>
-        <button type="button" className="btn btn-sm btn-accent" onClick={onCreateEvent}>
-          + создать
-        </button>
+        {user && (
+          <button type="button" className="btn btn-sm btn-accent" onClick={onCreateEvent}>
+            + создать
+          </button>
+        )}
       </div>
 
       {error && <div className="alert">{error}</div>}

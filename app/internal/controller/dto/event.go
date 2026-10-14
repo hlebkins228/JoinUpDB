@@ -18,6 +18,7 @@ type CreateEventRequest struct {
 }
 
 type UpdateEventRequest struct {
+	CategoryIDs     []int          `json:"category_ids" validate:"omitempty,unique,dive,gt=0"`
 	ID              int            `param:"id" validate:"required,gte=1"`
 	Name            string         `json:"name" validate:"required,min=5,max=100"`
 	Desc            string         `json:"desc,omitempty"`

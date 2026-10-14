@@ -77,6 +77,7 @@ export interface CreateEventRequest {
 
 export interface UpdateEventRequest extends CreateEventRequest {
   id: number;
+  category_ids?: number[];
 }
 
 export interface EventSearchParams {

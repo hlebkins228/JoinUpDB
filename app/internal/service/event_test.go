@@ -182,7 +182,7 @@ func testEventModel() *models.Event {
 func testCreateEventReq() *dto.CreateEventRequest {
 	lat, lon := 55.75, 37.62
 	return &dto.CreateEventRequest{
-		Name:      "Meetup title" m,
+		Name:      "Meetup title",
 		EventTime: time.Now().UTC().Add(24 * time.Hour),
 		City:      "Moscow",
 		Location: &dto.EventLocation{

@@ -92,18 +92,23 @@ func (r *EventRepo) UpdateEvent(ctx context.Context, event *models.Event) error 
 		return err
 	}
 
+	fields := bson.M{
+		"name":              event.Name,
+		"description":       event.Desc,
+		"updated_at":        event.UpdatedAt,
+		"event_date":        event.EventTime,
+		"telegram_chat_url": event.TelegramChatURL,
+		"city":              event.City,
+		"image_id":          event.ImageID,
+		"location":          fromModelLocation(event.Location),
+	}
+	if event.Categories != nil {
+		fields["categories"] = modelCategoriesToMongo(event.Categories)
+	}
+
 	result, err := r.collection(eventsCollection).UpdateOne(ctx,
 		bson.M{"_id": event.ID, "deleted": false},
-		bson.M{"$set": bson.M{
-			"name":              event.Name,
-			"description":       event.Desc,
-			"updated_at":        event.UpdatedAt,
-			"event_date":        event.EventTime,
-			"telegram_chat_url": event.TelegramChatURL,
-			"city":              event.City,
-			"image_id":          event.ImageID,
-			"location":          fromModelLocation(event.Location),
-		}},
+		bson.M{"$set": fields},
 	)
 	if err != nil {
 		return err

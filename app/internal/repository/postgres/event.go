@@ -175,6 +175,17 @@ func (r *EventRepo) UpdateEvent(ctx context.Context, event *models.Event) error 
 		return sql.ErrNoRows
 	}
 
+	if event.Categories != nil {
+		if _, err = run.Exec(ctx, `delete from event_category where event_id = $1`, event.ID); err != nil {
+			return err
+		}
+		for _, category := range event.Categories {
+			if _, err = run.Exec(ctx, `insert into event_category (event_id, category_id) values ($1, $2)`, event.ID, category.ID); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 

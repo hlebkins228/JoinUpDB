@@ -28,7 +28,7 @@ export function Header({ route, user, onNavigate }: HeaderProps) {
           <span>joinup</span>
         </button>
         <nav className="tabs">
-          {TABS.map((tab) => (
+          {TABS.filter((tab) => user || tab.id === 'search').map((tab) => (
             <button
               key={tab.id}
               type="button"
@@ -40,11 +40,17 @@ export function Header({ route, user, onNavigate }: HeaderProps) {
           ))}
         </nav>
         <div className="header-right">
-          <Avatar
-            src={imageUrl(user?.avatar_id)}
-            name={user?.name}
-            onClick={() => onNavigate('profile')}
-          />
+          {user ? (
+            <Avatar
+              src={imageUrl(user.avatar_id)}
+              name={user.name}
+              onClick={() => onNavigate('profile')}
+            />
+          ) : (
+            <button type="button" className="btn btn-sm" onClick={() => onNavigate('login')}>
+              войти
+            </button>
+          )}
         </div>
       </div>
     </header>

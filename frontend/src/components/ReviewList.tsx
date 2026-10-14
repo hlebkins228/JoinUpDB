@@ -9,7 +9,7 @@ interface ReviewListProps {
   reviews: Review[];
   loading: boolean;
   error: string | null;
-  onOpenUser(id: number): void;
+  onOpenUser?: (id: number) => void;
 }
 
 const listStyle: CSSProperties = {
@@ -64,6 +64,8 @@ export function ReviewList({ reviews, loading, error, onOpenUser }: ReviewListPr
     return <div className="empty-state">загружаем…</div>;
   }
 
+  const Author = onOpenUser ? 'button' : 'span';
+
   return (
     <div className="review-list" style={listStyle}>
       {error && <div className="alert">{error}</div>}
@@ -75,11 +77,11 @@ export function ReviewList({ reviews, loading, error, onOpenUser }: ReviewListPr
       {reviews.map((review) => (
         <article key={review.id} className="review-item" style={itemStyle}>
           <header style={headerStyle}>
-            <button
-              type="button"
+            <Author
+              type={onOpenUser ? 'button' : undefined}
               className="review-author"
-              style={authorButtonStyle}
-              onClick={() => onOpenUser(review.author.id)}
+              style={{ ...authorButtonStyle, cursor: onOpenUser ? 'pointer' : 'default' }}
+              onClick={onOpenUser ? () => onOpenUser(review.author.id) : undefined}
             >
               <Avatar
                 src={imageUrl(review.author.avatar_id)}
@@ -87,7 +89,7 @@ export function ReviewList({ reviews, loading, error, onOpenUser }: ReviewListPr
                 size="sm"
               />
               <span>{review.author.name}</span>
-            </button>
+            </Author>
             <StarRating value={review.rating} readOnly size="sm" />
             <span style={dateStyle}>{fmtDate(review.created_at)}</span>
           </header>

@@ -7,7 +7,7 @@ import { EventSectionDivider } from './EventSectionDivider';
 interface PaginatedEventsProps {
   events: EventResponse[];
   onOpen(id: number): void;
-  onOpenUser(id: number): void;
+  onOpenUser?: (id: number) => void;
   showParticipantUsers?: boolean;
 }
 

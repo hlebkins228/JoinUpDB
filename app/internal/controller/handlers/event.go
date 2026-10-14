@@ -83,7 +83,6 @@ func (h *EventHandler) CreateEvent(c *echo.Context) error {
 // @Failure 404 {object} dto.Msg
 // @Failure 422 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
-// @Security BearerAuth
 // @Router /api/v1/user/event/{id} [get]
 func (h *EventHandler) GetEvent(c *echo.Context) error {
 	var req dto.EventIDRequest
@@ -122,7 +121,6 @@ func (h *EventHandler) GetEvent(c *echo.Context) error {
 // @Success 200 {object} dto.EventsResponse
 // @Failure 400 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
-// @Security BearerAuth
 // @Router /api/v1/user/event/search [get]
 func (h *EventHandler) SearchEvents(c *echo.Context) error {
 	var req dto.EventSearchRequest
@@ -209,7 +207,6 @@ func (h *EventHandler) ListJoinedEvents(c *echo.Context) error {
 // @Produce json
 // @Success 200 {object} dto.CategoriesResponse
 // @Failure 500 {object} dto.Msg
-// @Security BearerAuth
 // @Router /api/v1/user/category [get]
 func (h *EventHandler) ListCategories(c *echo.Context) error {
 	resp, err := h.eventSvc.ListCategories(c.Request().Context())

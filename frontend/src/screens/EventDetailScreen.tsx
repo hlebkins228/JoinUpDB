@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Field } from '../components/Field';
 import { Select, TextArea, TextInput } from '../components/inputs';
-import { CategoryDropdown } from '../components/CategoryDropdown';
+import { CategoryPicker } from '../components/CategoryPicker';
 import { UploadEventCover } from '../components/UploadEventCover';
 import { MiniMap } from '../components/MiniMap';
 import { AddressPicker } from '../components/AddressPicker';
@@ -36,7 +36,7 @@ import type { Category, EventResponse } from '../types';
 
 interface EventDetailScreenProps {
   eventId: number | null;
-  onOpenUser(id: number): void;
+  onOpenUser?: (id: number) => void;
   onBack(): void;
   onAfterDelete(): void;
   refreshKey?: number;
@@ -150,6 +150,7 @@ export function EventDetailScreen({
         if (cancelled) return;
         setEvent(fetched);
         setForm(eventToForm(fetched));
+        setActiveCats(fetched.categories?.map((category) => category.id) ?? []);
         setCoverImageId(fetched.image_id ?? null);
         setCoverPreview(null);
         setEditing(false);
@@ -201,7 +202,8 @@ export function EventDetailScreen({
     [user, event],
   );
   const isPast = !!event && isPastDate(event.event_time);
-  const canEdit = isCreator && !isPast;
+  const isAdmin = user?.role === 'admin';
+  const canEdit = (isCreator || isAdmin) && !isPast;
   const hasOwnReview = useMemo(
     () => !!user && reviews.some((r) => r.author.id === user.id),
     [user, reviews],
@@ -215,12 +217,6 @@ export function EventDetailScreen({
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function toggleCat(id: number) {
-    setActiveCats((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
   }
 
   function validate(): string | null {
@@ -269,14 +265,17 @@ export function EventDetailScreen({
       let nextId: number;
       if (event) {
         nextId = event.id;
-        await updateEvent({ ...payload, id: event.id });
+        await updateEvent({ ...payload, id: event.id, category_ids: activeCats });
       } else if (createdId != null) {
         nextId = createdId;
-        await updateEvent({ ...payload, id: createdId });
+        await updateEvent({ ...payload, id: createdId, category_ids: activeCats });
       } else {
         const created = await createEvent(payload);
         nextId = created.id;
         setCreatedId(created.id);
+        for (const catId of activeCats) {
+          await addEventCategory(nextId, catId);
+        }
       }
 
       if (pendingCover) {
@@ -292,19 +291,10 @@ export function EventDetailScreen({
         }
       }
 
-      for (const catId of activeCats) {
-        try {
-          await addEventCategory(nextId, catId);
-        } catch (err) {
-          if (err instanceof ApiError && err.status !== 409) {
-            console.warn('add category failed', err);
-          }
-        }
-      }
-
       const refreshed = await getEvent(nextId);
       setEvent(refreshed);
       setForm(eventToForm(refreshed));
+      setActiveCats(refreshed.categories?.map((category) => category.id) ?? []);
       setCoverImageId(refreshed.image_id ?? null);
       setEditing(false);
     } catch (err) {
@@ -377,32 +367,32 @@ export function EventDetailScreen({
           <div className="row">
             {isPast && <span className="muted">событие прошло</span>}
             {canEdit && (
-              <>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-ghost"
-                  onClick={() => setEditing(true)}
-                >
-                  редактировать
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-danger"
-                  onClick={onDelete}
-                  disabled={busy}
-                >
-                  удалить
-                </button>
-              </>
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost"
+                onClick={() => setEditing(true)}
+              >
+                редактировать
+              </button>
+            )}
+            {(isAdmin || canEdit) && (
+              <button
+                type="button"
+                className="btn btn-sm btn-danger"
+                onClick={onDelete}
+                disabled={busy}
+              >
+                удалить
+              </button>
             )}
             {!isPast && !isCreator && !isParticipant && (
               <button
                 type="button"
-                className="btn btn-accent btn-sm"
+                className={`btn btn-sm ${user ? 'btn-accent' : 'btn-guest'}`}
                 onClick={onJoin}
-                disabled={busy}
+                disabled={busy || !user}
               >
-                {busy ? '…' : 'присоединиться'}
+                {!user ? 'войдите, чтобы присоединиться' : busy ? '…' : 'присоединиться'}
               </button>
             )}
             {!isPast && !isCreator && isParticipant && (
@@ -541,7 +531,7 @@ export function EventDetailScreen({
             if (event) {
               setEditing(false);
               setForm(eventToForm(event));
-              setActiveCats([]);
+              setActiveCats(event.categories?.map((category) => category.id) ?? []);
             } else {
               onBack();
             }
@@ -650,11 +640,13 @@ export function EventDetailScreen({
           />
         </Field>
 
-        {isNew && (
-          <Field label="категории" optional>
-            <CategoryDropdown categories={categories} activeCats={activeCats} onToggle={toggleCat} />
-          </Field>
-        )}
+        <div className="field">
+          <span className="field-label">
+            <span>категории</span>
+            <span className="opt">опционально</span>
+          </span>
+          <CategoryPicker categories={categories} activeCats={activeCats} onChange={setActiveCats} />
+        </div>
 
         <div className="row-end" style={{ marginTop: 24 }}>
           <button type="submit" className="btn" disabled={busy}>

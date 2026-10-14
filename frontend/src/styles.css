@@ -295,6 +295,12 @@ a:hover {
   opacity: 0.5;
   cursor: not-allowed;
 }
+.btn-guest:disabled {
+  background: var(--fg-15);
+  border-color: var(--fg-30);
+  color: var(--fg-50);
+  opacity: 1;
+}
 .btn:hover:not(:disabled) {
   background: var(--accent);
   border-color: var(--accent);
@@ -501,6 +507,31 @@ a:hover {
   padding: 8px;
   border: 1px solid var(--fg-15);
   background: var(--bg);
+}
+.category-picker-trigger {
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.category-picker-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--fg-15);
+  background: var(--bg);
+}
+.category-picker-list {
+  max-height: 240px;
+  overflow-y: auto;
+}
+.category-picker-option {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
 }
 .pagination {
   display: flex;

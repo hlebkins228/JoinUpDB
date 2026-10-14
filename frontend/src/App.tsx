@@ -11,19 +11,19 @@ import { EventDetailScreen } from './screens/EventDetailScreen';
 import type { Route, RouteState } from './routes';
 
 function Shell() {
-  const { token, loading, user } = useAuth();
-  const [authRoute, setAuthRoute] = useState<'login' | 'register'>('login');
+  const { loading, user } = useAuth();
   const [state, setState] = useState<RouteState>({ route: 'search', refreshKey: 0 });
 
   if (loading) {
     return <div className="empty-state">загружаем…</div>;
   }
 
-  if (!token || !user) {
-    if (authRoute === 'register') {
-      return <RegisterScreen onGoLogin={() => setAuthRoute('login')} />;
-    }
-    return <LoginScreen onGoRegister={() => setAuthRoute('register')} />;
+  let route = state.route;
+  if (!user && ['mine', 'joining', 'profile', 'event-new'].includes(route)) {
+    route = 'search';
+  }
+  if (user && (route === 'login' || route === 'register')) {
+    route = 'search';
   }
 
   function navigate(route: Route, eventId: number | null = null, userId: number | null = null) {
@@ -36,12 +36,18 @@ function Shell() {
   }
 
   let body: JSX.Element;
-  switch (state.route) {
+  switch (route) {
+    case 'login':
+      body = <LoginScreen onGoRegister={() => navigate('register')} />;
+      break;
+    case 'register':
+      body = <RegisterScreen onGoLogin={() => navigate('login')} />;
+      break;
     case 'search':
       body = (
         <SearchScreen
           onOpenEvent={(id) => navigate('event-detail', id)}
-          onOpenUser={(id) => navigate('profile', null, id)}
+          onOpenUser={user ? (id) => navigate('profile', null, id) : undefined}
           onCreateEvent={() => navigate('event-new', null)}
           refreshKey={state.refreshKey}
         />
@@ -79,7 +85,7 @@ function Shell() {
       body = (
         <EventDetailScreen
           eventId={state.eventId ?? null}
-          onOpenUser={(id) => navigate('profile', null, id)}
+          onOpenUser={user ? (id) => navigate('profile', null, id) : undefined}
           onBack={() => navigate('search')}
           onAfterDelete={() => navigate('mine')}
           refreshKey={state.refreshKey}
@@ -90,7 +96,7 @@ function Shell() {
       body = (
         <EventDetailScreen
           eventId={null}
-          onOpenUser={(id) => navigate('profile', null, id)}
+          onOpenUser={user ? (id) => navigate('profile', null, id) : undefined}
           onBack={() => navigate('search')}
           onAfterDelete={() => navigate('mine')}
           refreshKey={state.refreshKey}
@@ -101,7 +107,7 @@ function Shell() {
       body = (
         <SearchScreen
           onOpenEvent={(id) => navigate('event-detail', id)}
-          onOpenUser={(id) => navigate('profile', null, id)}
+          onOpenUser={user ? (id) => navigate('profile', null, id) : undefined}
           onCreateEvent={() => navigate('event-new', null)}
           refreshKey={state.refreshKey}
         />
@@ -111,7 +117,7 @@ function Shell() {
   return (
     <div className="app-shell">
       <Header
-        route={state.route}
+        route={route}
         user={user}
         onNavigate={(r) => navigate(r)}
       />

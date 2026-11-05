@@ -1,0 +1,9 @@
+.git
+.test-tools
+allure-results
+allure-report
+test-report
+docs
+*.pdf
+*.pdf:Zone.Identifier
+config.yaml

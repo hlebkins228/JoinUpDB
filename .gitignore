@@ -16,6 +16,7 @@
 !report/biblio.bib
 *.bcf
 *.big
+*.pdf
 
 **/temp/**
 temp/**
@@ -29,10 +30,4 @@ docs/**
 config.yaml
 mongodb-keyfile
 package-lock.json
-.kiro
-.kiro/**
-.claude
-CLAUDE.md
-.claude/**
-
 *.run.xml

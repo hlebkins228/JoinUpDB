@@ -1,0 +1,5 @@
+db: postgres
+jwt:
+  secret: TEST_JWT_SECRET
+logging:
+  type: prod

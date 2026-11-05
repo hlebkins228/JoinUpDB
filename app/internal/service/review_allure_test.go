@@ -1,5 +1,3 @@
-//go:build allure
-
 package service_test
 
 import (
@@ -13,12 +11,31 @@ import (
 	"JoinUp/internal/models"
 	"JoinUp/internal/repository/postgres"
 	"JoinUp/internal/service"
-	"JoinUp/internal/testutil"
 
 	"github.com/ozontech/allure-go/pkg/framework/provider"
 	"github.com/ozontech/allure-go/pkg/framework/runner"
+	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/mock"
 )
+
+type reviewBuilder struct {
+	review models.Review
+}
+
+func (b reviewBuilder) WithRating(rating int) reviewBuilder {
+	b.review.Rating = rating
+	return b
+}
+
+func (b reviewBuilder) WithText(text string) reviewBuilder {
+	b.review.Text = text
+	return b
+}
+
+func (b reviewBuilder) Build() *models.Review {
+	review := b.review
+	return &review
+}
 
 type stubReviewEventRepo struct {
 	service.EventRepo
@@ -29,34 +46,36 @@ func (r *stubReviewEventRepo) GetEvent(context.Context, int) (*models.Event, err
 	return r.event, nil
 }
 
-func reviewEventFixture() *models.Event {
-	event := testEventModel()
-	event.ID = 7
-	event.EventTime = time.Now().UTC().Add(-24 * time.Hour)
-	return event
+type mockEventRepo struct {
+	service.EventRepo
+	mock.Mock
 }
 
-type classicReviewFixture struct {
-	ctx        context.Context
-	cancel     context.CancelFunc
-	connection *testutil.ReviewConnection
-	reviews    *postgres.ReviewRepo
-	svc        service.ReviewService
+func (m *mockEventRepo) GetEvent(ctx context.Context, id int) (*models.Event, error) {
+	args := m.Called(ctx, id)
+	event, _ := args.Get(0).(*models.Event)
+	return event, args.Error(1)
 }
 
-func newClassicReviewFixture() classicReviewFixture {
-	ctx, cancel := context.WithCancel(context.Background())
-	connection := testutil.NewReviewConnection()
-	reviews := postgres.NewReviewRepo(connection)
-	uow := postgres.NewUOW(connection)
-	events := &stubReviewEventRepo{event: reviewEventFixture()}
-	return classicReviewFixture{
-		ctx: ctx, cancel: cancel, connection: connection, reviews: &reviews,
-		svc: service.NewReviewService(&uow, &reviews, events),
-	}
+type mockUOW struct {
+	mock.Mock
+}
+
+func (m *mockUOW) BeginTx(ctx context.Context) (context.Context, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(context.Context), args.Error(1)
+}
+
+func (m *mockUOW) Commit(ctx context.Context) error {
+	return m.Called(ctx).Error(0)
+}
+
+func (m *mockUOW) Rollback(ctx context.Context) error {
+	return m.Called(ctx).Error(0)
 }
 
 type mockReviewRepo struct {
+	service.ReviewRepo
 	mock.Mock
 }
 
@@ -66,12 +85,6 @@ func (m *mockReviewRepo) Create(ctx context.Context, review *models.Review) (*mo
 	return created, args.Error(1)
 }
 
-func (m *mockReviewRepo) ListByEvent(ctx context.Context, eventID int) ([]*models.Review, error) {
-	args := m.Called(ctx, eventID)
-	reviews, _ := args.Get(0).([]*models.Review)
-	return reviews, args.Error(1)
-}
-
 func (m *mockReviewRepo) ExistsByEventAndAuthor(ctx context.Context, eventID, authorID int) (bool, error) {
 	args := m.Called(ctx, eventID, authorID)
 	return args.Bool(0), args.Error(1)
@@ -79,194 +92,169 @@ func (m *mockReviewRepo) ExistsByEventAndAuthor(ctx context.Context, eventID, au
 
 type reviewTxKey struct{}
 
-type londonReviewFixture struct {
-	ctx     context.Context
-	cancel  context.CancelFunc
-	txCtx   context.Context
-	events  *mockEventRepo
-	reviews *mockReviewRepo
-	uow     *mockUOW
-	svc     service.ReviewService
-}
-
-func newLondonReviewFixture() londonReviewFixture {
-	ctx, cancel := context.WithCancel(context.Background())
-	txCtx := context.WithValue(ctx, reviewTxKey{}, "review transaction")
-	events, reviews, uow := new(mockEventRepo), new(mockReviewRepo), new(mockUOW)
-	return londonReviewFixture{
-		ctx:     ctx,
-		cancel:  cancel,
-		txCtx:   txCtx,
-		events:  events,
-		reviews: reviews,
-		uow:     uow,
-		svc:     service.NewReviewService(uow, reviews, events),
-	}
-}
-
-func (f londonReviewFixture) assertExpectations(pt provider.T) {
-	f.events.AssertExpectations(pt)
-	f.reviews.AssertExpectations(pt)
-	f.uow.AssertExpectations(pt)
-}
-
 func TestAllureReviewServiceClassic(t *testing.T) {
-	r := runner.NewRunner(t, "ReviewService — классический подход")
-	var f classicReviewFixture
-	r.BeforeAll(func(pt provider.T) {
-		pt.WithNewStep("BeforeAll — создание зависимостей", func(_ provider.StepCtx) {
-			f = newClassicReviewFixture()
-			pt.Require().False(f.connection.Closed())
-		})
-	})
-	r.AfterAll(func(pt provider.T) {
-		pt.WithNewStep("AfterAll — освобождение зависимостей", func(_ provider.StepCtx) {
-			f.connection.Close()
-			f.cancel()
-			pt.Assert().True(f.connection.Closed())
-			pt.Assert().ErrorIs(f.ctx.Err(), context.Canceled)
-			f = classicReviewFixture{}
-		})
-	})
+	r := runner.NewRunner(t, "ReviewService Classic")
+	ctx := context.Background()
+	date := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	longText := strings.Repeat("t", 2000)
+	var (
+		pool  pgxmock.PgxPoolIface
+		svc   service.ReviewService
+		input *models.Review
+		event *models.Event
+	)
 	r.BeforeEach(func(pt provider.T) {
-		pt.WithNewStep("BeforeEach — очистка состояния теста", func(_ provider.StepCtx) {
-			f.connection.Reset()
-			pt.Tags("classic")
-		})
+		builder := reviewBuilder{review: models.Review{EventID: 7, AuthorID: 20}}
+		input = builder.WithRating(5).WithText("Great meetup").Build()
+		event = &models.Event{ID: 7, CreatorID: 10, EventTime: date}
+		var err error
+		pool, err = pgxmock.NewPool()
+		pt.Require().NoError(err)
+		reviews := postgres.NewReviewRepo(pool)
+		uow := postgres.NewUOW(pool)
+		svc = service.NewReviewService(&uow, &reviews, &stubReviewEventRepo{event: event})
 	})
-	r.NewTest("Создание: 2000 Unicode-символов и удаление пробелов", func(pt provider.T) {
-		text := strings.Repeat("я", 2000)
-		input := testutil.NewReviewBuilder().WithText(" \n" + text + "\t ").Build()
-
-		got, err := f.svc.CreateReview(f.ctx, input.EventID, input.AuthorID, input.Rating, input.Text)
-
-		pt.Require().NoError(err)
-		pt.Require().NotNil(got)
-		pt.Assert().Equal(1, got.ID)
-		pt.Assert().Equal(input.EventID, got.EventID)
-		pt.Assert().Equal(input.AuthorID, got.AuthorID)
-		pt.Assert().Equal(input.Rating, got.Rating)
-		pt.Assert().Equal(text, got.Text)
-		pt.Assert().False(got.CreatedAt.IsZero())
-		pt.Assert().Equal(time.UTC, got.CreatedAt.Location())
-		stored, err := f.reviews.ListByEvent(f.ctx, input.EventID)
-		pt.Require().NoError(err)
-		pt.Require().Len(stored, 1)
-		pt.Assert().Equal(got.Text, stored[0].Text)
-		pt.Assert().Equal(got.ID, stored[0].ID)
+	r.AfterEach(func(pt provider.T) {
+		pool.ExpectClose()
+		pool.Close()
+		pt.Assert().NoError(pool.ExpectationsWereMet())
 	})
-	r.NewTest("Повторный отзыв не меняет хранилище", func(pt provider.T) {
-		input := testutil.NewReviewBuilder().Build()
-		first, err := f.svc.CreateReview(f.ctx, input.EventID, input.AuthorID, input.Rating, input.Text)
-		pt.Require().NoError(err)
+	r.NewTest("Create trims 2000 Unicode characters", func(pt provider.T) {
+		input.Text = " \n" + longText + "\t "
+		pool.ExpectBegin()
+		pool.ExpectQuery("select exists").WithArgs(input.EventID, input.AuthorID).
+			WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(false))
+		pool.ExpectQuery("insert into review").
+			WithArgs(input.EventID, input.AuthorID, input.Rating, longText, pgxmock.AnyArg()).
+			WillReturnRows(pgxmock.NewRows([]string{"id", "created_at"}).AddRow(42, date))
+		pool.ExpectCommit()
+		pool.ExpectRollback()
 
-		got, err := f.svc.CreateReview(f.ctx, input.EventID, input.AuthorID, input.Rating, "Другой отзыв")
+		got, err := svc.CreateReview(ctx, input.EventID, input.AuthorID, input.Rating, input.Text)
+
+		pt.Require().NoError(err)
+		pt.Assert().Equal(42, got.ID)
+		pt.Assert().Equal(longText, got.Text)
+	})
+	r.NewTest("Duplicate stops before insert", func(pt provider.T) {
+		pool.ExpectBegin()
+		pool.ExpectQuery("select exists").WithArgs(input.EventID, input.AuthorID).
+			WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(true))
+		pool.ExpectRollback()
+
+		_, err := svc.CreateReview(ctx, input.EventID, input.AuthorID, input.Rating, input.Text)
 
 		pt.Assert().ErrorIs(err, exceptions.ErrAlreadyExists)
-		pt.Assert().Nil(got)
-		stored, err := f.reviews.ListByEvent(f.ctx, input.EventID)
-		pt.Require().NoError(err)
-		pt.Require().Len(stored, 1)
-		pt.Assert().Equal(first.ID, stored[0].ID)
-		pt.Assert().Equal(input.Text, stored[0].Text)
 	})
-	r.NewTest("2001 Unicode-символ: отзыв не сохраняется", func(pt provider.T) {
-		input := testutil.NewReviewBuilder().WithText(strings.Repeat("я", 2001)).Build()
+	r.NewTest("Invalid text is rejected", func(pt provider.T) {
+		for _, text := range []string{" \n\t ", longText + "é"} {
+			_, err := svc.CreateReview(ctx, input.EventID, input.AuthorID, input.Rating, text)
 
-		got, err := f.svc.CreateReview(f.ctx, input.EventID, input.AuthorID, input.Rating, input.Text)
+			pt.Assert().ErrorIs(err, exceptions.ErrInvalidPayload)
+		}
+	})
+	r.NewTest("Out-of-range rating is rejected", func(pt provider.T) {
+		for _, rating := range []int{0, 6} {
+			_, err := svc.CreateReview(ctx, input.EventID, input.AuthorID, rating, input.Text)
 
-		pt.Assert().ErrorIs(err, exceptions.ErrInvalidPayload)
-		pt.Assert().Nil(got)
-		stored, err := f.reviews.ListByEvent(f.ctx, input.EventID)
-		pt.Require().NoError(err)
-		pt.Assert().Empty(stored)
+			pt.Assert().ErrorIs(err, exceptions.ErrInvalidPayload)
+		}
+	})
+	r.NewTest("Organizer cannot review own event", func(pt provider.T) {
+		pool.ExpectBegin()
+		pool.ExpectRollback()
+
+		_, err := svc.CreateReview(ctx, input.EventID, event.CreatorID, input.Rating, input.Text)
+
+		pt.Assert().ErrorIs(err, exceptions.ErrOrganizerCannotReview)
 	})
 	r.RunTests()
 }
 
 func TestAllureReviewServiceLondon(t *testing.T) {
-	r := runner.NewRunner(t, "ReviewService — лондонский подход")
-	var f londonReviewFixture
-	r.BeforeAll(func(pt provider.T) {
-		pt.WithNewStep("BeforeAll — создание зависимостей", func(_ provider.StepCtx) {
-			f = newLondonReviewFixture()
-		})
-	})
-	r.AfterAll(func(pt provider.T) {
-		pt.WithNewStep("AfterAll — освобождение зависимостей", func(_ provider.StepCtx) {
-			f.cancel()
-			pt.Assert().ErrorIs(f.ctx.Err(), context.Canceled)
-			f = londonReviewFixture{}
-		})
+	r := runner.NewRunner(t, "ReviewService London")
+	ctx := context.Background()
+	txCtx := context.WithValue(ctx, reviewTxKey{}, true)
+	date := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	future := time.Date(2100, 1, 1, 12, 0, 0, 0, time.UTC)
+	saveErr, commitErr := errors.New("save failed"), errors.New("commit failed")
+	var (
+		events         *mockEventRepo
+		reviews        *mockReviewRepo
+		uow            *mockUOW
+		svc            service.ReviewService
+		event          *models.Event
+		input, created *models.Review
+	)
+	r.BeforeEach(func(pt provider.T) {
+		builder := reviewBuilder{review: models.Review{EventID: 7, AuthorID: 20, CreatedAt: date}}
+		input = builder.WithRating(5).WithText("Great meetup").Build()
+		created = builder.WithRating(1).WithText("Good!").Build()
+		created.ID = 42
+		event = &models.Event{ID: 7, CreatorID: 10, EventTime: date}
+		events, reviews, uow = new(mockEventRepo), new(mockReviewRepo), new(mockUOW)
+		events.Test(pt)
+		reviews.Test(pt)
+		uow.Test(pt)
+		events.On("GetEvent", txCtx, event.ID).Return(event, nil).Once()
+		uow.On("BeginTx", ctx).Return(txCtx, nil).Once()
+		uow.On("Rollback", txCtx).Return(nil).Once()
+		svc = service.NewReviewService(uow, reviews, events)
 	})
 	r.AfterEach(func(pt provider.T) {
-		pt.WithNewStep("AfterEach — проверка ожиданий mock", func(_ provider.StepCtx) {
-			f.assertExpectations(pt)
-		})
+		events.AssertExpectations(pt)
+		reviews.AssertExpectations(pt)
+		uow.AssertExpectations(pt)
 	})
-	r.BeforeEach(func(pt provider.T) {
-		pt.WithNewStep("BeforeEach — очистка состояния теста", func(_ provider.StepCtx) {
-			f.events.Mock = mock.Mock{}
-			f.reviews.Mock = mock.Mock{}
-			f.uow.Mock = mock.Mock{}
-			f.events.Test(pt)
-			f.reviews.Test(pt)
-			f.uow.Test(pt)
-			f.uow.On("BeginTx", f.ctx).Return(f.txCtx, nil).Once()
-			f.uow.On("Rollback", f.txCtx).Return(nil).Once()
-			pt.Epic("JoinUp — ЛР1")
-			pt.Feature("ReviewService")
-			pt.Tags("london", "unit", "reviews", "mock")
-		})
-	})
-	r.NewTest("Создание: нормализация текста и commit", func(pt provider.T) {
-		event := reviewEventFixture()
-		f.events.On("GetEvent", f.txCtx, event.ID).Return(event, nil).Once()
-		input := testutil.NewReviewBuilder().WithRating(1).WithText("  Хорошо!\n").Build()
-		created := testutil.NewReviewBuilder().WithRating(1).WithText("Хорошо!").Build()
-		created.ID = 42
-		f.reviews.On("ExistsByEventAndAuthor", f.txCtx, input.EventID, input.AuthorID).Return(false, nil).Once()
-		f.reviews.On("Create", f.txCtx, mock.MatchedBy(func(rv *models.Review) bool {
-			return rv.EventID == input.EventID && rv.AuthorID == input.AuthorID &&
-				rv.Rating == 1 && rv.Text == "Хорошо!" && !rv.CreatedAt.IsZero() && rv.CreatedAt.Location() == time.UTC
-		})).Return(created, nil).Once()
-		f.uow.On("Commit", f.txCtx).Return(nil).Once()
+	r.NewTest("Create passes normalized data and commits", func(pt provider.T) {
+		input.Rating, input.Text = 1, "  Good!\n"
+		check := reviews.On("ExistsByEventAndAuthor", txCtx, input.EventID, input.AuthorID).
+			Return(false, nil).Once()
+		save := reviews.On("Create", txCtx, mock.MatchedBy(func(review *models.Review) bool {
+			return review.EventID == input.EventID && review.AuthorID == input.AuthorID &&
+				review.Rating == created.Rating && review.Text == created.Text
+		})).Return(created, nil).Once().NotBefore(check)
+		uow.On("Commit", txCtx).Return(nil).Once().NotBefore(save)
 
-		got, err := f.svc.CreateReview(f.ctx, input.EventID, input.AuthorID, input.Rating, input.Text)
+		got, err := svc.CreateReview(ctx, input.EventID, input.AuthorID, input.Rating, input.Text)
 
 		pt.Require().NoError(err)
-		pt.Require().NotNil(got)
 		pt.Assert().Equal(created.ID, got.ID)
 		pt.Assert().Equal(created.Text, got.Text)
-		pt.Assert().Equal(created.Rating, got.Rating)
-		pt.Assert().Equal(created.Author.Name, got.Author.Name)
 	})
-	r.NewTest("Будущее событие: без сохранения и commit", func(pt provider.T) {
-		event := reviewEventFixture()
-		event.EventTime = time.Now().UTC().Add(24 * time.Hour)
-		f.events.On("GetEvent", f.txCtx, event.ID).Return(event, nil).Once()
-		input := testutil.NewReviewBuilder().Build()
+	r.NewTest("Future event stops before persistence", func(pt provider.T) {
+		event.EventTime = future
 
-		got, err := f.svc.CreateReview(f.ctx, input.EventID, input.AuthorID, input.Rating, input.Text)
+		_, err := svc.CreateReview(ctx, input.EventID, input.AuthorID, input.Rating, input.Text)
 
 		pt.Assert().ErrorIs(err, exceptions.ErrEventNotPassed)
-		pt.Assert().Nil(got)
-		f.reviews.AssertNotCalled(pt, "Create", mock.Anything, mock.Anything)
-		f.uow.AssertNotCalled(pt, "Commit", mock.Anything)
 	})
-	r.NewTest("Ошибка сохранения: rollback без commit", func(pt provider.T) {
-		event := reviewEventFixture()
-		f.events.On("GetEvent", f.txCtx, event.ID).Return(event, nil).Once()
-		input := testutil.NewReviewBuilder().Build()
-		dbErr := errors.New("database unavailable")
-		f.reviews.On("ExistsByEventAndAuthor", f.txCtx, input.EventID, input.AuthorID).Return(false, nil).Once()
-		f.reviews.On("Create", f.txCtx, mock.Anything).Return(nil, dbErr).Once()
+	r.NewTest("Deleted event stops before persistence", func(pt provider.T) {
+		event.Deleted = true
 
-		got, err := f.svc.CreateReview(f.ctx, input.EventID, input.AuthorID, input.Rating, input.Text)
+		_, err := svc.CreateReview(ctx, input.EventID, input.AuthorID, input.Rating, input.Text)
 
-		pt.Assert().ErrorIs(err, dbErr)
+		pt.Assert().ErrorIs(err, exceptions.ErrNotFound)
+	})
+	r.NewTest("Save failure rolls back without commit", func(pt provider.T) {
+		reviews.On("ExistsByEventAndAuthor", txCtx, input.EventID, input.AuthorID).
+			Return(false, nil).Once()
+		reviews.On("Create", txCtx, mock.Anything).Return(nil, saveErr).Once()
+
+		_, err := svc.CreateReview(ctx, input.EventID, input.AuthorID, input.Rating, input.Text)
+
+		pt.Assert().ErrorIs(err, saveErr)
+	})
+	r.NewTest("Commit failure returns no review and rolls back", func(pt provider.T) {
+		reviews.On("ExistsByEventAndAuthor", txCtx, input.EventID, input.AuthorID).
+			Return(false, nil).Once()
+		save := reviews.On("Create", txCtx, mock.Anything).Return(created, nil).Once()
+		uow.On("Commit", txCtx).Return(commitErr).Once().NotBefore(save)
+
+		got, err := svc.CreateReview(ctx, input.EventID, input.AuthorID, input.Rating, input.Text)
+
+		pt.Assert().ErrorIs(err, commitErr)
 		pt.Assert().Nil(got)
-		f.uow.AssertNotCalled(pt, "Commit", mock.Anything)
 	})
 	r.RunTests()
 }

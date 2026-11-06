@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:16.6-bookworm
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: joinup_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres -d joinup_test]
+      interval: 1s
+      timeout: 5s
+      retries: 60
+
+  app:
+    build:
+      context: ..
+      dockerfile: tests/Dockerfile
+      target: app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: joinup_test
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: "8080"
+
+  tests:
+    build:
+      context: ..
+      dockerfile: tests/Dockerfile
+      target: runner
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+    environment:
+      TEST_DATABASE_URL: postgres://postgres:postgres@db:5432/joinup_test?sslmode=disable
+      BACKEND_URL: http://app:8080
+      PGHOST: db
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: joinup_test
+      PGCONNECT_TIMEOUT: "5"
+      REPORT_DIR: /report
+      TEST_UID: ${TEST_UID:-1000}
+      TEST_GID: ${TEST_GID:-1000}
+      GITHUB_ACTIONS: ${GITHUB_ACTIONS:-}
+      BUILD_NUMBER: ${BUILD_NUMBER:-0}
+      BUILD_URL: ${BUILD_URL:-}
+    volumes:
+      - ${TEST_REPORT_DIR:-../test-report/ci}:/report

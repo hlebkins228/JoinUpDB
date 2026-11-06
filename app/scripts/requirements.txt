@@ -1,0 +1,4 @@
+psycopg[binary]>=3.2,<4
+Faker>=30,<40
+matplotlib>=3.9,<4
+Pillow>=10,<13

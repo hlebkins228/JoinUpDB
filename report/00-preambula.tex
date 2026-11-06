@@ -1,0 +1,86 @@
+\makeatletter
+\input{size12.clo}
+\def\@ptsize{2}
+\makeatother
+
+\usepackage{tempora}
+\usepackage{tocloft}
+\usepackage{pdfpages}
+\usepackage{xurl}
+\urlstyle{same}
+\usepackage{tikz}
+\usetikzlibrary{positioning, shapes.geometric, arrows.meta, fit, calc}
+\usepackage{enumitem}
+\usepackage{makecell}
+
+\geometry{a4paper,left=30mm,right=10mm,top=20mm,bottom=20mm}
+\onehalfspacing
+\setlength{\parindent}{1.25cm}
+\setlength{\emergencystretch}{2em}
+\frenchspacing
+\raggedbottom
+\makeatletter
+\setlength{\@fptop}{0pt}
+\makeatother
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+\brokenpenalty=10000
+
+\titleformat{\chapter}[block]{\large\bfseries}{\thechapter}{0.6em}{\hyphenpenalty=10000\exhyphenpenalty=10000}
+\titleformat{name=\chapter,numberless}[block]{\large\bfseries\centering}{}{0pt}{\hyphenpenalty=10000\exhyphenpenalty=10000}
+\titleformat{\section}{\normalsize\bfseries}{\thesection}{0.6em}{\hyphenpenalty=10000\exhyphenpenalty=10000}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.6em}{\hyphenpenalty=10000\exhyphenpenalty=10000}
+\titlespacing*{\chapter}{1.25cm}{-24pt}{16pt}
+\titlespacing*{name=\chapter,numberless}{0pt}{-24pt}{16pt}
+\titlespacing*{\section}{1.25cm}{12pt}{6pt}
+\titlespacing*{\subsection}{1.25cm}{8pt}{4pt}
+
+\renewcommand{\cftchapleader}{\cftdotfill{\cftdotsep}}
+\renewcommand{\cfttoctitlefont}{\hfill\large\bfseries}
+\renewcommand{\cftaftertoctitle}{\hfill\mbox{}}
+\setlength{\cftbeforetoctitleskip}{-20pt}
+\setlength{\cftaftertoctitleskip}{18pt}
+\setcounter{tocdepth}{1}
+\renewcommand{\maketableofcontents}{%
+    \clearpage
+    \renewcommand\contentsname{СОДЕРЖАНИЕ}%
+    \begingroup
+    \hyphenpenalty=10000
+    \exhyphenpenalty=10000
+    \tableofcontents
+    \endgroup
+}
+
+\DeclareCaptionLabelSeparator{dash}{~\textemdash~}
+\captionsetup{labelsep=dash,font=small}
+\captionsetup[figure]{justification=centering}
+\captionsetup[table]{justification=raggedright,singlelinecheck=false}
+\captionsetup[lstlisting]{justification=centering,skip=6pt}
+\renewcommand{\lstlistingname}{Листинг}
+\setlist[itemize]{label=\textemdash,labelindent=1.25cm,leftmargin=*,align=left,labelsep=0.5em,itemsep=0pt,topsep=3pt}
+\setlist[enumerate]{label=\arabic*),labelindent=1.25cm,leftmargin=*,align=left,labelsep=0.5em,itemsep=0pt,topsep=3pt}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\theadfont}{\bfseries}
+\renewcommand{\theadalign}{cl}
+\renewcommand{\theadgape}{\Gape[4pt][4pt]}
+
+\lstset{language=SQL,basicstyle=\footnotesize\ttfamily,keywordstyle=\bfseries,
+    commentstyle=\itshape,columns=fullflexible,keepspaces=true,showstringspaces=false,
+    breaklines=true,breakatwhitespace=false,frame=single,rulecolor=\color{black!40},
+    framesep=3pt,framerule=0.4pt,xleftmargin=4pt,xrightmargin=4pt,
+    numbers=none,tabsize=4,captionpos=t,aboveskip=8pt,belowskip=8pt,
+    abovecaptionskip=3pt,belowcaptionskip=0pt,float=false}
+
+\ExecuteBibliographyOptions{sorting=none}
+\AtBeginBibliography{\small\raggedright}
+\renewcommand{\makebibliography}{\printbibliography[heading=bibintoc,title=СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ]}
+
+\DeclareFieldFormat{urldate}{%
+    (дата~обращения:\addspace\mbox{%
+    \iffieldundef{urlday}{}{\ifnumless{\thefield{urlday}}{10}{0\thefield{urlday}}{\thefield{urlday}}\adddot}%
+    \iffieldundef{urlmonth}{}{\ifnumless{\thefield{urlmonth}}{10}{0\thefield{urlmonth}}{\thefield{urlmonth}}\adddot}%
+    \thefield{urlyear}})}

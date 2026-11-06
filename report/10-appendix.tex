@@ -1,0 +1,26 @@
+\clearpage
+\chapter*{ПРИЛОЖЕНИЕ А}
+\addcontentsline{toc}{chapter}{ПРИЛОЖЕНИЕ А. Сценарий создания объектов базы данных}
+
+Команды создания объектов текущей схемы PostgreSQL приведены в листингах~\ref{lst:appendix-tables}--\ref{lst:appendix-roles} в порядке их применения.
+
+\begingroup
+\lstset{language=SQL,aboveskip=4pt,belowskip=4pt}
+\setcounter{lstlisting}{0}
+\renewcommand{\thelstlisting}{А.\arabic{lstlisting}}
+
+\lstinputlisting[firstline=2,lastline=60,caption={Основные таблицы},label={lst:appendix-tables}]{../app/migrations/20260330121114_init.sql}
+
+\lstinputlisting[firstline=2,lastline=5,caption={Ограничение логина и роль пользователя},label={lst:appendix-user}]{../app/migrations/20260409223512_change_user.sql}
+
+\lstinputlisting[firstline=2,lastline=19,caption={Категории и уникальность участия},label={lst:appendix-categories}]{../app/migrations/20260511230000_categories_and_members.sql}
+
+\lstinputlisting[firstline=2,lastline=18,caption={Отзывы},label={lst:appendix-reviews}]{../app/migrations/20260601000000_reviews.sql}
+
+\lstinputlisting[firstline=2,lastline=28,caption={Журнал и триггер удаления},label={lst:appendix-trigger}]{../app/migrations/20260924000000_event_deletion_log.sql}
+
+\lstinputlisting[firstline=2,lastline=5,caption={Индекс поиска},label={lst:appendix-index}]{../app/migrations/20260924001000_event_search_index.sql}
+
+\lstinputlisting[linerange={2-33,36-46,49-60,63-73,76-78},caption={Роли и права доступа},label={lst:appendix-roles}]{../app/migrations/20260924002000_roles.sql}
+
+\endgroup

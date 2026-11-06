@@ -1,0 +1,63 @@
+@startuml
+
+actor "Пользователь" as u
+box "Клиент"
+  participant "Web-интерфейс" as web
+box end
+box "Сервер"
+  participant "AuthController" as auth
+  participant "EventController" as events
+  participant "AuthService" as authService
+  participant "EventService" as eventService
+box end
+box "База данных"
+  database "Users DB" as usersDb
+  database "Events DB" as eventsDb
+box end
+
+u -> web: Открыть страницу входа
+activate web
+web --> u: Форма авторизации
+deactivate web
+
+u -> web: Ввод email и пароля
+activate web
+web -> auth: POST /api/auth/login (email, password)
+activate auth
+auth -> authService: authenticate(email, password)
+activate authService
+authService -> usersDb: Найти пользователя по email
+activate usersDb
+usersDb --> authService: Данные пользователя
+deactivate usersDb
+authService -> authService: Проверка пароля и статуса пользователя
+
+alt Успешная авторизация
+  authService --> auth: accessToken, refreshToken, userId
+  auth --> web: 200 OK + JWT токены
+  deactivate authService
+  deactivate auth
+
+  web -> events: GET /api/events (Authorization: Bearer accessToken)
+  activate events
+  events -> eventService: getAvailableEvents(userId)
+  activate eventService
+  eventService -> eventsDb: Запрос доступных событий
+  activate eventsDb
+  eventsDb --> eventService: Список событий
+  deactivate eventsDb
+  eventService --> events: DTO списка событий
+  deactivate eventService
+  events --> web: 200 OK + список событий
+  deactivate events
+  web --> u: Отображение списка событий
+else Ошибка авторизации
+  authService --> auth: Ошибка проверки данных
+  auth --> web: 401 Unauthorized
+  deactivate authService
+  deactivate auth
+  web --> u: Сообщение "Неверный email или пароль"
+end
+deactivate web
+
+@enduml

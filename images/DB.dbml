@@ -1,0 +1,115 @@
+// DBML schema for JoinUp database diagram
+// Current schema derived from app/migrations/*.sql
+
+Table image {
+  id int [pk, increment]
+  name text [not null]
+  data bytea [not null]
+}
+
+Table location {
+  id int [pk, increment]
+  name text [not null]
+  longitude float [not null]
+  latitude float [not null]
+  address text [not null]
+}
+
+Table users {
+  id int [pk, increment]
+  name text [not null]
+  age int [not null, check: `age > 0`]
+  login text [not null, unique]
+  password text [not null]
+  created_at timestamp [not null]
+  city text [not null]
+  telegram_login text
+  avatar_id int
+  role text [not null, default: 'user']
+}
+
+Table event {
+  id int [pk, increment]
+  name text [not null]
+  description text
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+  event_date timestamp [not null]
+  telegram_chat_url text
+  city text [not null]
+  creator_id int [not null]
+  location_id int [not null]
+  image_id int
+  deleted boolean [not null, default: false]
+
+  indexes {
+    (city, event_date, id) [name: 'event_search_city_date_idx', note: 'Partial index: WHERE deleted = false']
+  }
+}
+
+Table member {
+  id int [pk, increment]
+  user_id int [not null]
+  event_id int [not null]
+  role text [not null]
+
+  indexes {
+    (user_id, event_id) [unique, name: 'member_user_event_unique']
+  }
+}
+
+Table category {
+  id int [pk, increment]
+  subcategory_id int
+  name text [not null, unique]
+}
+
+Table event_category {
+  event_id int [not null]
+  category_id int [not null]
+
+  indexes {
+    (event_id, category_id) [pk]
+  }
+}
+
+Table review {
+  id bigint [pk, increment]
+  event_id bigint [not null]
+  author_id bigint [not null]
+  rating integer [not null]
+  text text [not null]
+  created_at timestamp [not null, default: `now() at time zone 'utc'`]
+
+  indexes {
+    (event_id, author_id) [unique, name: 'review_event_author_unique']
+    event_id [name: 'review_event_id_idx']
+    event_id [name: 'review_event_creator_lookup_idx']
+  }
+
+  checks {
+    `rating between 1 and 5` [name: 'review_rating_check']
+    `char_length(text) <= 2000` [name: 'review_text_length_check']
+  }
+}
+
+Table event_deletion_log {
+  id bigint [pk, increment]
+  event_id int [not null]
+  deleted_at timestamp [not null, default: `now() at time zone 'utc'`]
+
+  Note: 'Filled by event_deletion_log_trigger when event.deleted changes from false to true.'
+}
+
+Ref: image.id < users.avatar_id
+Ref: users.id < event.creator_id [delete: cascade]
+Ref: location.id < event.location_id
+Ref: image.id < event.image_id
+Ref: users.id < member.user_id [delete: cascade]
+Ref: event.id < member.event_id [delete: cascade]
+Ref: category.id < category.subcategory_id
+Ref: event.id < event_category.event_id [delete: cascade]
+Ref: category.id < event_category.category_id
+Ref: event.id < review.event_id [delete: cascade]
+Ref: users.id < review.author_id [delete: cascade]
+Ref: event.id < event_deletion_log.event_id [delete: cascade]

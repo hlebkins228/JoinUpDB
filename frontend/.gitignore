@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+.env.local
+.eslintcache
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts

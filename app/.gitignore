@@ -1,0 +1,4 @@
+allure-results/
+allure-report/
+test-report/
+.test-tools/

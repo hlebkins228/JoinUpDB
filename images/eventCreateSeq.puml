@@ -1,0 +1,47 @@
+@startuml
+
+actor "Пользователь" as u
+box "Клиент"
+  participant "Frontend" as c
+box end
+box "Сервер"
+  participant "Модуль событий" as s
+box end
+box "Хранение данных"
+  database "База данных" as db
+box end
+
+u -> c: Открыть страницу создания события
+activate c
+
+alt Пользователь не авторизован
+  c -> s: Запрос на авторизацию
+  activate s
+  s -> db: Проверка учетных данных
+  activate db
+  db --> s: Пользователь авторизован
+  deactivate db
+  s --> c: Ответ об авторизации
+  deactivate s
+else Пользователь уже авторизован
+  c -> c: Использование текущей сессии
+end
+
+u -> c: Нажать кнопку "Создать событие"
+u -> c: Заполнить описание события
+u -> c: Заполнить категории события
+u -> c: Подтвердить создание события
+
+c -> s: Запрос на создание события
+activate s
+s -> db: Сохранение события
+activate db
+db --> s: Ответ
+deactivate db
+s -> s: Формирование ответа
+s --> c: Ответ
+deactivate s
+c --> u: Событие успешно создано
+deactivate c
+
+@enduml

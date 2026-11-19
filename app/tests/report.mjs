@@ -1,5 +1,6 @@
+import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdirSync, readFileSync, readdirSync, writeFileSync, copyFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, writeFileSync, copyFileSync, existsSync, rmSync, cpSync } from 'node:fs';
 import { join } from 'node:path';
 
 const output = process.argv[2];
@@ -68,3 +69,15 @@ writeFileSync(join(target, 'executor.json'), JSON.stringify({
   buildOrder: Number(process.env.BUILD_NUMBER || 0), buildName: `Run ${process.env.BUILD_NUMBER || 'local'}`,
   buildUrl: process.env.BUILD_URL || '', reportName: 'JoinUp: unit → integration → e2e',
 }));
+
+if (process.argv.includes('--generate')) {
+  const allure = process.env.ALLURE_CLI || 'allure';
+  const history = join(output, 'history');
+  if (existsSync(history)) cpSync(history, join(target, 'history'), { recursive: true });
+  execFileSync(allure, ['generate', target, '--clean', '-o', join(output, 'html')], { stdio: 'inherit' });
+  rmSync(history, { recursive: true, force: true });
+  cpSync(join(output, 'html/history'), history, { recursive: true });
+  execFileSync(allure, ['generate', target, '--single-file', '--clean', '-o', join(output, 'single')], { stdio: 'inherit' });
+  copyFileSync(join(output, 'single/index.html'), join(output, 'report.html'));
+  console.log(`Report: ${join(output, 'report.html')}`);
+}

@@ -1,6 +1,9 @@
 package dto
 
-import "time"
+import (
+	"JoinUp/internal/models"
+	"time"
+)
 
 type CreateReviewRequest struct {
 	EventID int    `param:"id" validate:"required,gte=1"`
@@ -30,4 +33,28 @@ type ReviewResponse struct {
 
 type ReviewsResponse struct {
 	Reviews []*ReviewResponse `json:"reviews"`
+}
+
+func ReviewsFromModels(reviews []*models.Review) *ReviewsResponse {
+	response := &ReviewsResponse{Reviews: make([]*ReviewResponse, 0, len(reviews))}
+	for _, review := range reviews {
+		response.Reviews = append(response.Reviews, ReviewFromModel(review))
+	}
+	return response
+}
+
+func ReviewFromModel(r *models.Review) *ReviewResponse {
+	return &ReviewResponse{
+		ID:        r.ID,
+		EventID:   r.EventID,
+		AuthorID:  r.AuthorID,
+		Rating:    r.Rating,
+		Text:      r.Text,
+		CreatedAt: r.CreatedAt,
+		Author: &ReviewAuthor{
+			ID:       r.Author.ID,
+			Name:     r.Author.Name,
+			AvatarID: r.Author.AvatarID,
+		},
+	}
 }

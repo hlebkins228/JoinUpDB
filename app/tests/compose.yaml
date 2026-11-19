@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:16.6-bookworm
+    pull_policy: never
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -14,6 +15,8 @@ services:
       retries: 60
 
   app:
+    image: joinup-test-app:local
+    pull_policy: never
     build:
       context: ..
       dockerfile: tests/Dockerfile
@@ -31,6 +34,8 @@ services:
       SERVER_PORT: "8080"
 
   tests:
+    image: joinup-test-runner:local
+    pull_policy: never
     build:
       context: ..
       dockerfile: tests/Dockerfile

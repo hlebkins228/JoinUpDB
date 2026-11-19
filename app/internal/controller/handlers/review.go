@@ -16,10 +16,11 @@ type ReviewHandler struct {
 	ctx       context.Context
 	logger    *zap.Logger
 	reviewSvc ReviewService
+	userSvc   UserService
 }
 
-func NewReviewHandler(ctx context.Context, logger *zap.Logger, reviewSvc ReviewService) ReviewHandler {
-	return ReviewHandler{ctx: ctx, logger: logger, reviewSvc: reviewSvc}
+func NewReviewHandler(ctx context.Context, logger *zap.Logger, reviewSvc ReviewService, userSvc UserService) ReviewHandler {
+	return ReviewHandler{ctx: ctx, logger: logger, reviewSvc: reviewSvc, userSvc: userSvc}
 }
 
 // CreateReview godoc
@@ -38,7 +39,7 @@ func NewReviewHandler(ctx context.Context, logger *zap.Logger, reviewSvc ReviewS
 // @Failure 409 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
 // @Security BearerAuth
-// @Router /api/v1/user/event/{id}/review [post]
+// @Router /api/v1/events/{id}/reviews [post]
 func (h *ReviewHandler) CreateReview(c *echo.Context) error {
 	userID := utils.GetUserID(c)
 	if userID == nil {
@@ -56,6 +57,18 @@ func (h *ReviewHandler) CreateReview(c *echo.Context) error {
 		return c.JSON(http.StatusBadRequest, dto.Msg{Msg: getValidationMsg(err)})
 	}
 
+	var author *dto.ReviewAuthor
+	if apiVersion(c) == "v2" {
+		user, err := h.userSvc.GetUser(c.Request().Context(), *userID)
+		if errors.Is(err, exceptions.ErrNotFound) {
+			return c.JSON(http.StatusUnauthorized, dto.Msg{Msg: MsgAuthError})
+		}
+		if err != nil {
+			h.logger.Error("error on get review author", zap.Error(err))
+			return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
+		}
+		author = &dto.ReviewAuthor{ID: user.ID, Name: user.Name, AvatarID: user.AvatarID}
+	}
 	resp, err := h.reviewSvc.CreateReview(c.Request().Context(), req.EventID, *userID, req.Rating, req.Text)
 	if errors.Is(err, exceptions.ErrInvalidPayload) {
 		h.logger.Info("error on create review: invalid payload", zap.Error(err))
@@ -86,7 +99,11 @@ func (h *ReviewHandler) CreateReview(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusCreated, resp)
+	response := dto.ReviewFromModel(resp)
+	if author != nil {
+		response.Author = author
+	}
+	return c.JSON(http.StatusCreated, response)
 }
 
 // ListReviews godoc
@@ -99,7 +116,7 @@ func (h *ReviewHandler) CreateReview(c *echo.Context) error {
 // @Failure 400 {object} dto.Msg
 // @Failure 404 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
-// @Router /api/v1/event/{id}/review [get]
+// @Router /api/v1/events/{id}/reviews [get]
 func (h *ReviewHandler) ListReviews(c *echo.Context) error {
 	var req dto.ReviewIDRequest
 	if err := c.Bind(&req); err != nil {
@@ -121,5 +138,5 @@ func (h *ReviewHandler) ListReviews(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return c.JSON(http.StatusOK, dto.ReviewsFromModels(resp.Reviews))
 }

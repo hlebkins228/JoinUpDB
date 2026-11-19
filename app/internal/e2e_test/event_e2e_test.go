@@ -40,42 +40,49 @@ func TestE2EEventLifecycle(t *testing.T) {
 			req, err := http.NewRequestWithContext(context.Background(), method, baseURL+path, bytes.NewReader(body))
 			pt.Require().NoError(err)
 			req.Header.Set("Content-Type", "application/json")
-			if auth.Token != "" {
-				req.Header.Set("Authorization", "Bearer "+auth.Token)
-			}
-			if path == "/auth" {
+			if path == "/tokens" {
 				req.Header.Set("login", "e2e_user")
 				req.Header.Set("password", "password")
+			}
+			if auth.Token != "" {
+				req.Header.Set("Authorization", "Bearer "+auth.Token)
 			}
 			resp, err := client.Do(req)
 			pt.Require().NoError(err)
 			defer resp.Body.Close()
 			data, err := io.ReadAll(resp.Body)
 			pt.Require().NoError(err)
-			pt.Require().Equal(http.StatusOK, resp.StatusCode, "%s %s: %s", method, path, data)
+			expectedStatus := http.StatusOK
+			if method == http.MethodPost && path != "/tokens" {
+				expectedStatus = http.StatusCreated
+			}
+			if method == http.MethodDelete {
+				expectedStatus = http.StatusNoContent
+			}
+			pt.Require().Equal(expectedStatus, resp.StatusCode, "%s %s: %s", method, path, data)
 			if response != nil {
 				pt.Require().NoError(json.Unmarshal(data, response))
 			}
 		}
 
 		pt.WithNewStep("Register", func(_ provider.StepCtx) {
-			request(http.MethodPost, "/user", dto.CreateUserRequest{
+			request(http.MethodPost, "/users", dto.CreateUserRequest{
 				Name: "E2E User", Age: 25, Login: "e2e_user", Password: "password", City: "Moscow",
 			}, &user)
 		})
-		pt.WithNewStep("Login", func(_ provider.StepCtx) {
-			request(http.MethodGet, "/auth", nil, &auth)
+		pt.WithNewStep("Login: exchange login/password headers for a token", func(_ provider.StepCtx) {
+			request(http.MethodPost, "/tokens", nil, &auth)
 			pt.Require().NotEmpty(auth.Token)
 		})
 		pt.WithNewStep("Create event", func(_ provider.StepCtx) {
 			latitude, longitude := 55.75, 37.62
-			request(http.MethodPost, "/user/event", dto.CreateEventRequest{
+			request(http.MethodPost, "/events", dto.CreateEventRequest{
 				Name: "E2E meetup", City: "Moscow",
 				EventTime: time.Date(2100, 1, 1, 12, 0, 0, 0, time.UTC),
 				Location:  &dto.EventLocation{Name: "Park", Address: "Park entrance", Latitude: &latitude, Longitude: &longitude},
 			}, &eventID)
 		})
-		path := fmt.Sprintf("/user/event/%d", eventID.ID)
+		path := fmt.Sprintf("/events/%d", eventID.ID)
 		pt.WithNewStep("Read event", func(_ provider.StepCtx) {
 			request(http.MethodGet, path, nil, &event)
 			pt.Assert().Equal("E2E meetup", event.Name)

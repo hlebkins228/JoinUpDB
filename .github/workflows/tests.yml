@@ -53,17 +53,7 @@ jobs:
             mkdir -p test-report/ci
             echo failed > test-report/ci/unit.status
             cp test-report/ci/ci.log test-report/ci/unit.log || true
-            node tests/report.mjs test-report/ci
-            if [[ -d test-report/ci/history ]]; then
-              cp -a test-report/ci/history test-report/ci/allure-results/history
-            fi
-            npm install --prefix .test-tools --no-package-lock --no-audit --no-fund allure-commandline@2.46.1
-            .test-tools/node_modules/.bin/allure generate test-report/ci/allure-results --clean -o test-report/ci/html
-            cp -a test-report/ci/html/history test-report/ci/history-next
-            rm -rf test-report/ci/history
-            mv test-report/ci/history-next test-report/ci/history
-            .test-tools/node_modules/.bin/allure generate test-report/ci/allure-results --single-file --clean -o test-report/ci/single
-            cp test-report/ci/single/index.html test-report/ci/report.html
+            make allure-report TEST_REPORT_DIR="$PWD/test-report/ci"
           fi
           mkdir -p test-report/ci/site
           cp test-report/ci/report.html test-report/ci/site/index.html

@@ -1,0 +1,10 @@
+{
+  "name": "joinup-api-contract",
+  "private": true,
+  "scripts": {
+    "check": "redocly lint ../app/api/openapi.yaml --config redocly.yaml --max-problems 100"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.77.0"
+  }
+}

@@ -132,12 +132,15 @@ func authorize(c *client) error {
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+"/api/v1/auth", nil)
+	payload, err := json.Marshal(map[string]string{"login": login, "password": password})
 	if err != nil {
 		return err
 	}
-	req.Header.Set("login", login)
-	req.Header.Set("password", password)
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/api/v1/tokens", bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
 
 	status, body, err := c.do(req)
 	if err != nil {
@@ -204,7 +207,7 @@ func registerUser(c *client) error {
 		body["avatar_id"] = *avatarID
 	}
 
-	return c.sendJSON(http.MethodPost, "/api/v1/user", body, false)
+	return c.sendJSON(http.MethodPost, "/api/v1/users", body, false)
 }
 
 func createEvent(c *client) error {
@@ -217,7 +220,7 @@ func createEvent(c *client) error {
 		return err
 	}
 
-	return c.sendJSON(http.MethodPost, "/api/v1/user/event", reqBody, true)
+	return c.sendJSON(http.MethodPost, "/api/v1/events", reqBody, true)
 }
 
 func getEvent(c *client) error {
@@ -230,7 +233,7 @@ func getEvent(c *client) error {
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/user/event/%d", c.baseURL, id), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v1/events/%d", c.baseURL, id), nil)
 	if err != nil {
 		return err
 	}
@@ -260,7 +263,7 @@ func updateEvent(c *client) error {
 		return err
 	}
 
-	return c.sendJSON(http.MethodPut, "/api/v1/user/event", reqBody, true)
+	return c.sendJSON(http.MethodPut, fmt.Sprintf("/api/v1/events/%d", id), reqBody, true)
 }
 
 func deleteEvent(c *client) error {
@@ -273,7 +276,7 @@ func deleteEvent(c *client) error {
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/api/v1/user/event/%d", c.baseURL, id), nil)
+	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/api/v1/events/%d", c.baseURL, id), nil)
 	if err != nil {
 		return err
 	}

@@ -32,13 +32,13 @@ func NewEventHandler(ctx context.Context, logger *zap.Logger, eventSvc EventServ
 // @Accept json
 // @Produce json
 // @Param event body dto.CreateEventRequest true "Event payload"
-// @Success 200 {object} dto.EventIDResponse
+// @Success 201 {object} dto.EventIDResponse
 // @Failure 400 {object} dto.Msg
 // @Failure 404 {object} dto.Msg
 // @Failure 422 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
 // @Security BearerAuth
-// @Router /api/v1/user/event [post]
+// @Router /api/v1/events [post]
 func (h *EventHandler) CreateEvent(c *echo.Context) error {
 	userID, _, err := h.UserFromContext(c)
 	if userID == nil || err != nil {
@@ -57,7 +57,7 @@ func (h *EventHandler) CreateEvent(c *echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, dto.Msg{Msg: getValidationMsg(err)})
 	}
 
-	id, err := h.eventSvc.CreateEvent(c.Request().Context(), &req, *userID)
+	id, err := h.eventSvc.CreateEvent(c.Request().Context(), req.ToModel(), *userID)
 	if errors.Is(err, exceptions.ErrNotExists) {
 		h.logger.Info("error on create event: reference not found", zap.Error(err))
 		return c.JSON(http.StatusNotFound, dto.Msg{Msg: err.Error()})
@@ -69,7 +69,8 @@ func (h *EventHandler) CreateEvent(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, dto.EventIDResponse{ID: id})
+	c.Response().Header().Set("Location", resourceLocation(c, "events", id))
+	return c.JSON(http.StatusCreated, dto.EventIDResponse{ID: id})
 }
 
 // GetEvent godoc
@@ -83,7 +84,7 @@ func (h *EventHandler) CreateEvent(c *echo.Context) error {
 // @Failure 404 {object} dto.Msg
 // @Failure 422 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
-// @Router /api/v1/user/event/{id} [get]
+// @Router /api/v1/events/{id} [get]
 func (h *EventHandler) GetEvent(c *echo.Context) error {
 	var req dto.EventIDRequest
 
@@ -105,7 +106,7 @@ func (h *EventHandler) GetEvent(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, event)
+	return c.JSON(http.StatusOK, dto.EventFromModel(event))
 }
 
 // SearchEvents godoc
@@ -121,7 +122,7 @@ func (h *EventHandler) GetEvent(c *echo.Context) error {
 // @Success 200 {object} dto.EventsResponse
 // @Failure 400 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
-// @Router /api/v1/user/event/search [get]
+// @Router /api/v1/events [get]
 func (h *EventHandler) SearchEvents(c *echo.Context) error {
 	var req dto.EventSearchRequest
 	if err := c.Bind(&req); err != nil {
@@ -134,7 +135,13 @@ func (h *EventHandler) SearchEvents(c *echo.Context) error {
 		h.logger.Info("error on search events: invalid category_id", zap.Error(err))
 		return c.JSON(http.StatusBadRequest, dto.Msg{Msg: "invalid category_id"})
 	}
-	if len(categoryIDs) == 0 {
+	if apiVersion(c) == "v2" {
+		for _, id := range categoryIDs {
+			if id < 1 {
+				return c.JSON(http.StatusUnprocessableEntity, dto.Msg{Msg: "category_id must be positive"})
+			}
+		}
+	} else if len(categoryIDs) == 0 {
 		categoryIDs, err = dto.ParseCategoryIDs(c.QueryParams()["category_ids"])
 		if err != nil {
 			h.logger.Info("error on search events: invalid category_ids", zap.Error(err))
@@ -143,13 +150,13 @@ func (h *EventHandler) SearchEvents(c *echo.Context) error {
 	}
 	req.CategoryIDs = uniquePositiveIDs(categoryIDs)
 
-	resp, err := h.search.SearchEvents(c.Request().Context(), &req)
+	resp, err := h.search.SearchEvents(c.Request().Context(), req.ToModel())
 	if err != nil {
 		h.logger.Error("error on search events", zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return c.JSON(http.StatusOK, dto.EventsFromModels(resp))
 }
 
 // ListCreatedEvents godoc
@@ -160,7 +167,7 @@ func (h *EventHandler) SearchEvents(c *echo.Context) error {
 // @Success 200 {object} dto.EventsResponse
 // @Failure 500 {object} dto.Msg
 // @Security BearerAuth
-// @Router /api/v1/user/event/created [get]
+// @Router /api/v1/users/me/events [get]
 func (h *EventHandler) ListCreatedEvents(c *echo.Context) error {
 	userID, _, err := h.UserFromContext(c)
 	if userID == nil || err != nil {
@@ -173,7 +180,7 @@ func (h *EventHandler) ListCreatedEvents(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return c.JSON(http.StatusOK, dto.EventsFromModels(resp))
 }
 
 // ListJoinedEvents godoc
@@ -184,7 +191,7 @@ func (h *EventHandler) ListCreatedEvents(c *echo.Context) error {
 // @Success 200 {object} dto.EventsResponse
 // @Failure 500 {object} dto.Msg
 // @Security BearerAuth
-// @Router /api/v1/user/event/joined [get]
+// @Router /api/v1/users/me/participations [get]
 func (h *EventHandler) ListJoinedEvents(c *echo.Context) error {
 	userID, _, err := h.UserFromContext(c)
 	if userID == nil || err != nil {
@@ -197,7 +204,7 @@ func (h *EventHandler) ListJoinedEvents(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return c.JSON(http.StatusOK, dto.EventsFromModels(resp))
 }
 
 // ListCategories godoc
@@ -207,7 +214,7 @@ func (h *EventHandler) ListJoinedEvents(c *echo.Context) error {
 // @Produce json
 // @Success 200 {object} dto.CategoriesResponse
 // @Failure 500 {object} dto.Msg
-// @Router /api/v1/user/category [get]
+// @Router /api/v1/categories [get]
 func (h *EventHandler) ListCategories(c *echo.Context) error {
 	resp, err := h.eventSvc.ListCategories(c.Request().Context())
 	if err != nil {
@@ -215,7 +222,7 @@ func (h *EventHandler) ListCategories(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return c.JSON(http.StatusOK, dto.CategoriesFromModels(resp))
 }
 
 // UpdateEvent godoc
@@ -225,13 +232,13 @@ func (h *EventHandler) ListCategories(c *echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param event body dto.UpdateEventRequest true "Event payload (id in body)"
-// @Success 200 {object} dto.Msg
+// @Success 204
 // @Failure 400 {object} dto.Msg
 // @Failure 404 {object} dto.Msg
 // @Failure 422 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
 // @Security BearerAuth
-// @Router /api/v1/user/event [put]
+// @Router /api/v1/events/{id} [put]
 func (h *EventHandler) UpdateEvent(c *echo.Context) error {
 	userID, role, err := h.UserFromContext(c)
 	if userID == nil || role == "" || err != nil {
@@ -257,7 +264,11 @@ func (h *EventHandler) UpdateEvent(c *echo.Context) error {
 		return err
 	}
 
-	err = h.eventSvc.UpdateEvent(c.Request().Context(), &req)
+	if req.CategoryIDs == nil {
+		req.CategoryIDs = []int{}
+	}
+
+	err = h.eventSvc.UpdateEvent(c.Request().Context(), req.ToModel(), req.CategoryIDs)
 	if errors.Is(err, exceptions.ErrNotExists) {
 		h.logger.Info("error on update event: reference not found", zap.Error(err))
 		return c.JSON(http.StatusNotFound, dto.Msg{Msg: err.Error()})
@@ -275,7 +286,7 @@ func (h *EventHandler) UpdateEvent(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, dto.Msg{Msg: MsgOK})
+	return c.NoContent(http.StatusNoContent)
 }
 
 // JoinEvent godoc
@@ -284,14 +295,14 @@ func (h *EventHandler) UpdateEvent(c *echo.Context) error {
 // @Tags events
 // @Produce json
 // @Param id path int true "Event ID"
-// @Success 200 {object} dto.Msg
+// @Success 204
 // @Failure 400 {object} dto.Msg
 // @Failure 404 {object} dto.Msg
 // @Failure 409 {object} dto.Msg
 // @Failure 422 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
 // @Security BearerAuth
-// @Router /api/v1/user/event/{id}/join [post]
+// @Router /api/v1/events/{id}/participants/me [put]
 func (h *EventHandler) JoinEvent(c *echo.Context) error {
 	userID, _, err := h.UserFromContext(c)
 	if userID == nil || err != nil {
@@ -318,8 +329,7 @@ func (h *EventHandler) JoinEvent(c *echo.Context) error {
 		return c.JSON(http.StatusNotFound, dto.Msg{Msg: err.Error()})
 	}
 	if errors.Is(err, exceptions.ErrAlreadyExists) {
-		h.logger.Info("error on join event: already joined", zap.Error(err))
-		return c.JSON(http.StatusConflict, dto.Msg{Msg: err.Error()})
+		return c.NoContent(http.StatusNoContent)
 	}
 	if errors.Is(err, exceptions.ErrEventAlreadyPassed) {
 		h.logger.Info("error on join event: event already passed", zap.Error(err))
@@ -330,7 +340,7 @@ func (h *EventHandler) JoinEvent(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, dto.Msg{Msg: MsgOK})
+	return c.NoContent(http.StatusNoContent)
 }
 
 // LeaveEvent godoc
@@ -339,13 +349,13 @@ func (h *EventHandler) JoinEvent(c *echo.Context) error {
 // @Tags events
 // @Produce json
 // @Param id path int true "Event ID"
-// @Success 200 {object} dto.Msg
+// @Success 204
 // @Failure 400 {object} dto.Msg
 // @Failure 404 {object} dto.Msg
 // @Failure 422 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
 // @Security BearerAuth
-// @Router /api/v1/user/event/{id}/join [delete]
+// @Router /api/v1/events/{id}/participants/me [delete]
 func (h *EventHandler) LeaveEvent(c *echo.Context) error {
 	userID, _, err := h.UserFromContext(c)
 	if userID == nil || err != nil {
@@ -363,7 +373,10 @@ func (h *EventHandler) LeaveEvent(c *echo.Context) error {
 	}
 
 	err = h.eventSvc.LeaveEvent(c.Request().Context(), req.ID, *userID)
-	if errors.Is(err, exceptions.ErrNotFound) || errors.Is(err, exceptions.ErrNotExists) {
+	if errors.Is(err, exceptions.ErrNotExists) {
+		return c.NoContent(http.StatusNoContent)
+	}
+	if errors.Is(err, exceptions.ErrNotFound) {
 		h.logger.Info("error on leave event: not found", zap.Error(err))
 		return c.JSON(http.StatusNotFound, dto.Msg{Msg: err.Error()})
 	}
@@ -372,7 +385,7 @@ func (h *EventHandler) LeaveEvent(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, dto.Msg{Msg: MsgOK})
+	return c.NoContent(http.StatusNoContent)
 }
 
 // UploadEventImage godoc
@@ -383,14 +396,14 @@ func (h *EventHandler) LeaveEvent(c *echo.Context) error {
 // @Produce json
 // @Param id path int true "Event ID"
 // @Param image formData file true "Image file"
-// @Success 200 {object} dto.ImageIDResponse
+// @Success 201 {object} dto.ImageIDResponse
 // @Failure 400 {object} dto.Msg
 // @Failure 403 {object} dto.Msg
 // @Failure 404 {object} dto.Msg
 // @Failure 422 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
 // @Security BearerAuth
-// @Router /api/v1/user/event/{id}/image [put]
+// @Router /api/v1/events/{id}/images [post]
 func (h *EventHandler) UploadEventImage(c *echo.Context) error {
 	userID, role, err := h.UserFromContext(c)
 	if userID == nil || role == "" || err != nil {
@@ -447,7 +460,8 @@ func (h *EventHandler) UploadEventImage(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, dto.ImageIDResponse{ID: imageID})
+	c.Response().Header().Set("Location", resourceLocation(c, "images", imageID))
+	return c.JSON(http.StatusCreated, dto.ImageIDResponse{ID: imageID})
 }
 
 // AddEventCategory godoc
@@ -457,8 +471,8 @@ func (h *EventHandler) UploadEventImage(c *echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param id path int true "Event ID"
-// @Param category body dto.AddEventCategoryRequest true "Category payload"
-// @Success 200 {object} dto.Msg
+// @Param categoryId path int true "Category ID"
+// @Success 204
 // @Failure 400 {object} dto.Msg
 // @Failure 403 {object} dto.Msg
 // @Failure 404 {object} dto.Msg
@@ -466,7 +480,7 @@ func (h *EventHandler) UploadEventImage(c *echo.Context) error {
 // @Failure 422 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
 // @Security BearerAuth
-// @Router /api/v1/user/event/{id}/category [post]
+// @Router /api/v1/events/{id}/categories/{categoryId} [put]
 func (h *EventHandler) AddEventCategory(c *echo.Context) error {
 	userID, role, err := h.UserFromContext(c)
 	if userID == nil || role == "" || err != nil {
@@ -487,14 +501,19 @@ func (h *EventHandler) AddEventCategory(c *echo.Context) error {
 		return err
 	}
 
-	err = h.eventSvc.AddEventCategory(c.Request().Context(), &req)
-	if errors.Is(err, exceptions.ErrNotFound) || errors.Is(err, exceptions.ErrNotExists) {
+	err = h.eventSvc.AddEventCategory(c.Request().Context(), req.EventID, req.CategoryID)
+	if errors.Is(err, exceptions.ErrNotExists) {
+		if apiVersion(c) == "v2" {
+			return c.JSON(http.StatusNotFound, dto.Msg{Msg: err.Error()})
+		}
+		return c.NoContent(http.StatusNoContent)
+	}
+	if errors.Is(err, exceptions.ErrNotFound) {
 		h.logger.Info("error on add event category: reference not found", zap.Error(err))
 		return c.JSON(http.StatusNotFound, dto.Msg{Msg: err.Error()})
 	}
 	if errors.Is(err, exceptions.ErrAlreadyExists) {
-		h.logger.Info("error on add event category: already added", zap.Error(err))
-		return c.JSON(http.StatusConflict, dto.Msg{Msg: err.Error()})
+		return c.NoContent(http.StatusNoContent)
 	}
 	if errors.Is(err, exceptions.ErrEventAlreadyPassed) {
 		h.logger.Info("error on add event category: event already passed", zap.Error(err))
@@ -505,7 +524,7 @@ func (h *EventHandler) AddEventCategory(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, dto.Msg{Msg: MsgOK})
+	return c.NoContent(http.StatusNoContent)
 }
 
 // DeleteEvent godoc
@@ -514,14 +533,14 @@ func (h *EventHandler) AddEventCategory(c *echo.Context) error {
 // @Tags events
 // @Produce json
 // @Param id path int true "Event ID"
-// @Success 200 {object} dto.Msg
+// @Success 204
 // @Failure 400 {object} dto.Msg
 // @Failure 404 {object} dto.Msg
 // @Failure 409 {object} dto.Msg
 // @Failure 422 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
 // @Security BearerAuth
-// @Router /api/v1/user/event/{id} [delete]
+// @Router /api/v1/events/{id} [delete]
 func (h *EventHandler) DeleteEvent(c *echo.Context) error {
 	userID, role, err := h.UserFromContext(c)
 	if userID == nil || role == "" || err != nil {
@@ -549,15 +568,14 @@ func (h *EventHandler) DeleteEvent(c *echo.Context) error {
 		return c.JSON(http.StatusNotFound, dto.Msg{Msg: err.Error()})
 	}
 	if errors.Is(err, exceptions.ErrAlreadyDeleted) {
-		h.logger.Info("event already deleted", zap.Error(err))
-		return c.JSON(http.StatusConflict, dto.Msg{Msg: err.Error()})
+		return c.NoContent(http.StatusNoContent)
 	}
 	if err != nil {
 		h.logger.Error("error on delete event", zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, dto.Msg{Msg: MsgOK})
+	return c.NoContent(http.StatusNoContent)
 }
 
 func (h *EventHandler) UserFromContext(c *echo.Context) (*int, string, error) {

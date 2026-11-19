@@ -33,29 +33,29 @@ func NewEventRepo(pool *pgxpool.Pool) EventRepo {
 }
 
 func scanEvent(row eventScanner) (*models.Event, error) {
-	event := models.Event{}
+	var event eventRow
 	err := row.Scan(
-		&event.ID,
-		&event.Name,
-		&event.Desc,
-		&event.CreatedAt,
-		&event.UpdatedAt,
-		&event.EventTime,
-		&event.TelegramChatURL,
-		&event.City,
-		&event.CreatorID,
-		&event.ImageID,
-		&event.Location.Name,
-		&event.Location.Longitude,
-		&event.Location.Latitude,
-		&event.Location.Address,
-		&event.Deleted,
+		&event.id,
+		&event.name,
+		&event.description,
+		&event.createdAt,
+		&event.updatedAt,
+		&event.eventDate,
+		&event.telegramChatURL,
+		&event.city,
+		&event.creatorID,
+		&event.imageID,
+		&event.location.name,
+		&event.location.longitude,
+		&event.location.latitude,
+		&event.location.address,
+		&event.deleted,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &event, nil
+	return event.toModel(), nil
 }
 
 func (r *EventRepo) CreateEvent(ctx context.Context, event *models.Event) (int, error) {
@@ -547,11 +547,11 @@ func (r *EventRepo) ListCategories(ctx context.Context) ([]*models.Category, err
 
 	categories := make([]*models.Category, 0)
 	for rows.Next() {
-		category := models.Category{}
-		if err = rows.Scan(&category.ID, &category.Name); err != nil {
+		var category categoryRow
+		if err = rows.Scan(&category.id, &category.name); err != nil {
 			return nil, err
 		}
-		categories = append(categories, &category)
+		categories = append(categories, &models.Category{ID: category.id, Name: category.name})
 	}
 	if rows.Err() != nil {
 		return nil, rows.Err()

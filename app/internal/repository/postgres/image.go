@@ -48,13 +48,13 @@ func (r *ImageRepo) GetImage(ctx context.Context, id int) (*models.Image, error)
 		where id = $1
 	`
 
-	var img models.Image
-	err = run.QueryRow(ctx, query, id).Scan(&img.Name, &img.Data)
+	var row imageRow
+	err = run.QueryRow(ctx, query, id).Scan(&row.name, &row.data)
 	if err != nil {
 		return nil, err
 	}
 
-	return &img, nil
+	return &models.Image{Name: row.name, Data: row.data}, nil
 }
 
 func (r *ImageRepo) CheckExists(ctx context.Context, id int) (bool, error) {

@@ -80,6 +80,11 @@ func (s *EventService) GetEvent(ctx context.Context, id int) (*dto.EventResponse
 func (s *EventService) UpdateEvent(ctx context.Context, req *dto.UpdateEventRequest) error {
 	event := req.ToModel()
 	now := time.Now().UTC()
+	ctx, err := s.uow.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer s.uow.Rollback(ctx)
 
 	oldEvent, err := s.eventRepo.GetEvent(ctx, event.ID)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -103,12 +108,6 @@ func (s *EventService) UpdateEvent(ctx context.Context, req *dto.UpdateEventRequ
 	}
 
 	if req.CategoryIDs != nil {
-		ctx, err = s.uow.BeginTx(ctx)
-		if err != nil {
-			return err
-		}
-		defer s.uow.Rollback(ctx)
-
 		categories, err := s.eventRepo.ListCategories(ctx)
 		if err != nil {
 			return err
@@ -135,10 +134,7 @@ func (s *EventService) UpdateEvent(ctx context.Context, req *dto.UpdateEventRequ
 		return err
 	}
 
-	if req.CategoryIDs != nil {
-		return s.uow.Commit(ctx)
-	}
-	return nil
+	return s.uow.Commit(ctx)
 }
 
 func (s *EventService) DeleteEvent(ctx context.Context, id int) error {

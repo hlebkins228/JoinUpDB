@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v5"
 	"go.uber.org/zap"
@@ -31,12 +32,12 @@ func NewUserHandler(ctx context.Context, logger *zap.Logger, userSvc UserService
 // @Accept json
 // @Produce json
 // @Param user body dto.CreateUserRequest true "User payload"
-// @Success 200 {object} dto.UserIDResponse
+// @Success 201 {object} dto.UserIDResponse
 // @Failure 400 {object} dto.Msg
 // @Failure 409 {object} dto.Msg
 // @Failure 422 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
-// @Router /api/v1/user [post]
+// @Router /api/v1/users [post]
 func (h *UserHandler) CreateUser(c *echo.Context) error {
 	var req dto.CreateUserRequest
 
@@ -63,7 +64,8 @@ func (h *UserHandler) CreateUser(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, dto.UserIDResponse{ID: id})
+	c.Response().Header().Set("Location", "/api/v1/users/"+strconv.Itoa(id))
+	return c.JSON(http.StatusCreated, dto.UserIDResponse{ID: id})
 }
 
 // GetUser godoc
@@ -78,7 +80,7 @@ func (h *UserHandler) CreateUser(c *echo.Context) error {
 // @Failure 422 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
 // @Security BearerAuth
-// @Router /api/v1/user/{id} [get]
+// @Router /api/v1/users/{id} [get]
 func (h *UserHandler) GetUser(c *echo.Context) error {
 	var req dto.UserIDRequest
 
@@ -111,13 +113,13 @@ func (h *UserHandler) GetUser(c *echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param user body dto.UpdateUserRequest true "User payload"
-// @Success 200 {object} dto.Msg
+// @Success 204
 // @Failure 400 {object} dto.Msg
 // @Failure 404 {object} dto.Msg
 // @Failure 422 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
 // @Security BearerAuth
-// @Router /api/v1/user [put]
+// @Router /api/v1/users/me [put]
 func (h *UserHandler) UpdateUser(c *echo.Context) error {
 	userID := utils.GetUserID(c)
 	if userID == nil {
@@ -145,7 +147,7 @@ func (h *UserHandler) UpdateUser(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, dto.Msg{Msg: MsgOK})
+	return c.NoContent(http.StatusNoContent)
 }
 
 // UploadImage godoc
@@ -155,11 +157,11 @@ func (h *UserHandler) UpdateUser(c *echo.Context) error {
 // @Accept multipart/form-data
 // @Produce json
 // @Param image formData file true "Image file"
-// @Success 200 {object} dto.ImageIDResponse
+// @Success 201 {object} dto.ImageIDResponse
 // @Failure 400 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
 // @Security BearerAuth
-// @Router /api/v1/user/image [post]
+// @Router /api/v1/images [post]
 func (h *UserHandler) UploadImage(c *echo.Context) error {
 	fileHeader, err := c.FormFile("image")
 	if err != nil {
@@ -189,7 +191,8 @@ func (h *UserHandler) UploadImage(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, dto.ImageIDResponse{ID: id})
+	c.Response().Header().Set("Location", "/api/v1/images/"+strconv.Itoa(id))
+	return c.JSON(http.StatusCreated, dto.ImageIDResponse{ID: id})
 }
 
 // GetImage godoc
@@ -203,7 +206,7 @@ func (h *UserHandler) UploadImage(c *echo.Context) error {
 // @Failure 404 {object} dto.Msg
 // @Failure 422 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
-// @Router /api/v1/image/{id} [get]
+// @Router /api/v1/images/{id} [get]
 func (h *UserHandler) GetImage(c *echo.Context) error {
 	var req dto.UserIDRequest
 
@@ -232,23 +235,33 @@ func (h *UserHandler) GetImage(c *echo.Context) error {
 
 // Auth godoc
 // @Summary Authorize user
-// @Description Returns JWT token for valid login and password from headers
+// @Description Returns JWT token for login/password headers or credentials in the JSON body
 // @Tags auth
 // @Produce json
-// @Param login header string true "User login"
-// @Param password header string true "User password"
+// @Accept json
+// @Param login header string false "Login (requires password header)"
+// @Param password header string false "Password (requires login header)"
+// @Param credentials body dto.AuthRequest false "Credentials when login/password headers are absent"
 // @Success 200 {object} dto.AuthResponse
 // @Failure 401 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
-// @Router /api/v1/auth [get]
+// @Router /api/v1/tokens [post]
 func (h *UserHandler) Auth(c *echo.Context) error {
-	login := c.Request().Header.Get("login")
-	password := c.Request().Header.Get("password")
-	if login == "" || password == "" {
-		return c.JSON(http.StatusUnauthorized, dto.Msg{Msg: MsgAuthError})
+	req := dto.AuthRequest{
+		Login:    c.Request().Header.Get("login"),
+		Password: c.Request().Header.Get("password"),
 	}
+	if req.Login == "" && req.Password == "" {
+		if err := c.Bind(&req); err != nil {
+			return c.JSON(http.StatusBadRequest, dto.Msg{Msg: getBindMsg(err)})
+		}
+	}
+	if err := c.Validate(&req); err != nil {
+		return c.JSON(http.StatusUnprocessableEntity, dto.Msg{Msg: getValidationMsg(err)})
+	}
+	c.Response().Header().Set("Cache-Control", "no-store")
 
-	token, err := h.userSvc.Auth(c.Request().Context(), login, password)
+	token, err := h.userSvc.Auth(c.Request().Context(), req.Login, req.Password)
 	if errors.Is(err, exceptions.ErrInvalidCredentials) {
 		h.logger.Info("error on auth: invalid credentials", zap.Error(err))
 		return c.JSON(http.StatusUnauthorized, dto.Msg{Msg: err.Error()})

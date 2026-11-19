@@ -68,48 +68,11 @@ src/
                             # Profile, EventDetail (view + edit)
 ```
 
-## Backend endpoints used
+## API contract
 
-All requests live under `/api/v1`:
-
-| method | path                              | usage                           |
-| ------ | --------------------------------- | ------------------------------- |
-| GET    | `/auth`                           | login (login/password headers)  |
-| POST   | `/user`                           | register                        |
-| GET    | `/user/:id`                       | profile lookup (after JWT)      |
-| PUT    | `/user`                           | profile update                  |
-| POST   | `/user/image`                     | upload user avatar              |
-| GET    | `/user/event/search`              | search events                   |
-| GET    | `/user/event/:id`                 | event detail                    |
-| POST   | `/user/event`                     | create event                    |
-| PUT    | `/user/event/:id`                 | update event                    |
-| DELETE | `/user/event/:id`                 | delete event                    |
-| POST   | `/user/event/:id/join`            | join event                      |
-| PUT    | `/user/event/:id/image`           | upload event cover              |
-| POST   | `/user/event/:id/category`        | attach a category               |
-
-## Missing backend endpoints
-
-Some flows in the UI cannot be fully implemented because the matching
-backend handlers do not exist yet. The frontend keeps the UI in place and
-falls back to placeholder messaging where data is missing — none of these
-endpoints have been implemented in this PR (per the task instructions).
-
-- `GET /image/:id` — there is no public route to read uploaded images. The
-  app stores the `image_id` returned from upload but cannot fetch the
-  binary back, so avatars and event covers fall back to initials /
-  placeholder until the user re-uploads in the same session.
-- Listing endpoints scoped to a user. `searchEvents` is the only listing
-  route, so `Мои события` (events I created) and `Я участвую` (events I
-  joined) are filtered on the client. There is no creator filter on the
-  search route, and the response does not populate `members`, which means
-  the «participates» list cannot be reconstructed from the API today.
-- `DELETE /user/event/:id/join` — there is no leave-event handler, so the
-  UI omits the «отписаться» action.
-- `GET /user/event/categories` (and `GET /user/event/:id/categories`) —
-  the categories directory is not exposed and the event response does not
-  contain attached category ids, so the UI uses a hard-coded list and
-  cannot show which categories are already attached to an event.
-- `GET /user/me` — the JWT carries `UserID`, which is decoded in the
-  browser, but there is no first-class «who am I» endpoint. `GET /user/:id`
-  is used as a workaround.
+The canonical OpenAPI 3.1 specification is [openapi.yaml](../app/api/openapi.yaml).
+The SPA uses resource routes under `/api/v1`: `/tokens`, `/users`, `/events`,
+`/categories`, `/images`, and nested event participants and reviews.
+Authentication uses `POST /tokens` with JSON credentials. Mutations use Bearer JWT.
+The backend serves the contract at `/openapi.yaml` and Swagger UI at `/swagger/index.html`.
+See the root [README](../README.md) for laboratory 2 and offline contract validation.

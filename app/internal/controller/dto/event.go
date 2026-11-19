@@ -19,7 +19,7 @@ type CreateEventRequest struct {
 
 type UpdateEventRequest struct {
 	CategoryIDs     []int          `json:"category_ids" validate:"omitempty,unique,dive,gt=0"`
-	ID              int            `param:"id" validate:"required,gte=1"`
+	ID              int            `param:"id" json:"-" validate:"required,gte=1"`
 	Name            string         `json:"name" validate:"required,min=5,max=100"`
 	Desc            string         `json:"desc,omitempty"`
 	EventTime       time.Time      `json:"event_time" validate:"required"`
@@ -39,7 +39,7 @@ type EventSearchRequest struct {
 
 type AddEventCategoryRequest struct {
 	EventID    int `param:"id" validate:"required,gte=1"`
-	CategoryID int `json:"category_id" validate:"required,gte=1"`
+	CategoryID int `param:"categoryId" json:"-" validate:"required,gte=1"`
 }
 
 type EventLocation struct {

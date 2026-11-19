@@ -1,11 +1,12 @@
 package controller
 
 import (
-	_ "JoinUp/docs"
+	"JoinUp/api"
 	"JoinUp/internal/controller/handlers"
 	customWare "JoinUp/internal/controller/middleware"
 	"JoinUp/internal/utils/jwt"
 	"context"
+	"net/http"
 
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
@@ -28,32 +29,34 @@ func NewServer(ctx context.Context, logger *zap.Logger, eventSvc handlers.EventS
 	// API Routes (must be before static files)
 
 	apiGroup := e.Group("/api/v1")
-	apiGroup.POST("/user", userHandler.CreateUser)
-	apiGroup.GET("/auth", userHandler.Auth)
-	apiGroup.GET("/image/:id", userHandler.GetImage)
-	apiGroup.GET("/event/:id/review", reviewHandler.ListReviews)
-	apiGroup.GET("/user/category", eventHandler.ListCategories)
-	apiGroup.GET("/user/event/search", eventHandler.SearchEvents)
-	apiGroup.GET("/user/event/:id", eventHandler.GetEvent)
+	apiGroup.POST("/users", userHandler.CreateUser)
+	apiGroup.POST("/tokens", userHandler.Auth)
+	apiGroup.GET("/images/:id", userHandler.GetImage)
+	apiGroup.GET("/events/:id/reviews", reviewHandler.ListReviews)
+	apiGroup.GET("/categories", eventHandler.ListCategories)
+	apiGroup.GET("/events", eventHandler.SearchEvents)
+	apiGroup.GET("/events/:id", eventHandler.GetEvent)
 
-	userGroup := apiGroup.Group("/user")
-	userGroup.Use(customWare.JWTAuthorization(logger, jwtMgr))
-
-	userGroup.PUT("", userHandler.UpdateUser)
-	userGroup.GET("/:id", userHandler.GetUser)
-	userGroup.POST("/image", userHandler.UploadImage)
-	userGroup.POST("/event", eventHandler.CreateEvent)
-	userGroup.GET("/event/created", eventHandler.ListCreatedEvents)
-	userGroup.GET("/event/joined", eventHandler.ListJoinedEvents)
-	userGroup.PUT("/event", eventHandler.UpdateEvent)
-	userGroup.PUT("/event/:id", eventHandler.UpdateEvent)
-	userGroup.POST("/event/:id/join", eventHandler.JoinEvent)
-	userGroup.DELETE("/event/:id/join", eventHandler.LeaveEvent)
-	userGroup.PUT("/event/:id/image", eventHandler.UploadEventImage)
-	userGroup.POST("/event/:id/category", eventHandler.AddEventCategory)
-	userGroup.DELETE("/event/:id", eventHandler.DeleteEvent)
-	userGroup.POST("/event/:id/review", reviewHandler.CreateReview)
-	e.GET("/swagger/*", echo.WrapHandler(httpSwagger.Handler()))
+	protected := apiGroup.Group("")
+	protected.Use(customWare.JWTAuthorization(logger, jwtMgr))
+	protected.PUT("/users/me", userHandler.UpdateUser)
+	protected.GET("/users/:id", userHandler.GetUser)
+	protected.POST("/images", userHandler.UploadImage)
+	protected.POST("/events", eventHandler.CreateEvent)
+	protected.GET("/users/me/events", eventHandler.ListCreatedEvents)
+	protected.GET("/users/me/participations", eventHandler.ListJoinedEvents)
+	protected.PUT("/events/:id", eventHandler.UpdateEvent)
+	protected.PATCH("/events/:id", eventHandler.PatchEvent)
+	protected.PUT("/events/:id/participants/me", eventHandler.JoinEvent)
+	protected.DELETE("/events/:id/participants/me", eventHandler.LeaveEvent)
+	protected.POST("/events/:id/images", eventHandler.UploadEventImage)
+	protected.PUT("/events/:id/categories/:categoryId", eventHandler.AddEventCategory)
+	protected.DELETE("/events/:id", eventHandler.DeleteEvent)
+	protected.POST("/events/:id/reviews", reviewHandler.CreateReview)
+	e.GET("/openapi.yaml", func(c *echo.Context) error {
+		return c.Blob(http.StatusOK, "application/yaml", api.Specification)
+	})
+	e.GET("/swagger/*", echo.WrapHandler(httpSwagger.Handler(httpSwagger.URL("/openapi.yaml"))))
 
 	// Static files
 	e.File("/", "frontend/index.html")

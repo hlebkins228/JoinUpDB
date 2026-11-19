@@ -36,7 +36,7 @@ function toCategory(raw: { id: number; name: string }): Category {
 export async function searchEvents(
   params: EventSearchParams = {},
 ): Promise<EventResponse[]> {
-  const data = await request<EventsListResponse>('/user/event/search', {
+  const data = await request<EventsListResponse>('/events', {
     method: 'GET',
     searchParams: {
       name: params.name,
@@ -50,54 +50,55 @@ export async function searchEvents(
 }
 
 export async function getJoinedEvents(): Promise<EventResponse[]> {
-  const data = await request<EventsListResponse>('/user/event/joined', {
+  const data = await request<EventsListResponse>('/users/me/participations', {
     method: 'GET',
   });
   return data.events ?? [];
 }
 
 export async function getCreatedEvents(): Promise<EventResponse[]> {
-  const data = await request<EventsListResponse>('/user/event/created', {
+  const data = await request<EventsListResponse>('/users/me/events', {
     method: 'GET',
   });
   return data.events ?? [];
 }
 
 export async function getCategories(): Promise<Category[]> {
-  const data = await request<CategoriesListResponse>('/user/category', {
+  const data = await request<CategoriesListResponse>('/categories', {
     method: 'GET',
   });
   return (data.categories ?? []).map(toCategory);
 }
 
 export async function getEvent(id: number): Promise<EventResponse> {
-  return request<EventResponse>(`/user/event/${id}`, { method: 'GET' });
+  return request<EventResponse>(`/events/${id}`, { method: 'GET' });
 }
 
 export async function createEvent(body: CreateEventRequest): Promise<{ id: number }> {
-  return request<{ id: number }>('/user/event', {
+  return request<{ id: number }>('/events', {
     method: 'POST',
     body,
   });
 }
 
 export async function updateEvent(body: UpdateEventRequest): Promise<void> {
-  await request<void>(`/user/event/${body.id}`, {
+  const { id, ...fields } = body;
+  await request<void>(`/events/${id}`, {
     method: 'PUT',
-    body,
+    body: fields,
   });
 }
 
 export async function deleteEvent(id: number): Promise<void> {
-  await request<void>(`/user/event/${id}`, { method: 'DELETE' });
+  await request<void>(`/events/${id}`, { method: 'DELETE' });
 }
 
 export async function joinEvent(id: number): Promise<void> {
-  await request<void>(`/user/event/${id}/join`, { method: 'POST' });
+  await request<void>(`/events/${id}/participants/me`, { method: 'PUT' });
 }
 
 export async function leaveEvent(id: number): Promise<void> {
-  await request<void>(`/user/event/${id}/join`, { method: 'DELETE' });
+  await request<void>(`/events/${id}/participants/me`, { method: 'DELETE' });
 }
 
 export async function uploadEventImage(
@@ -106,8 +107,8 @@ export async function uploadEventImage(
 ): Promise<ImageResponse> {
   const form = new FormData();
   form.append('image', file, file.name);
-  return request<ImageResponse>(`/user/event/${eventId}/image`, {
-    method: 'PUT',
+  return request<ImageResponse>(`/events/${eventId}/images`, {
+    method: 'POST',
     body: form,
   });
 }
@@ -116,8 +117,7 @@ export async function addEventCategory(
   eventId: number,
   categoryId: number,
 ): Promise<void> {
-  await request<void>(`/user/event/${eventId}/category`, {
-    method: 'POST',
-    body: { category_id: categoryId },
+  await request<void>(`/events/${eventId}/categories/${categoryId}`, {
+    method: 'PUT',
   });
 }

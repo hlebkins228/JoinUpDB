@@ -21,7 +21,7 @@ interface ReviewsResponse {
 }
 
 export async function listEventReviews(eventId: number): Promise<Review[]> {
-  const data = await request<ReviewsResponse>(`/event/${eventId}/review`, {
+  const data = await request<ReviewsResponse>(`/events/${eventId}/reviews`, {
     method: 'GET',
   });
   return data.reviews ?? [];
@@ -34,7 +34,7 @@ export async function createEventReview(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10000);
   try {
-    return await request<Review>(`/user/event/${eventId}/review`, {
+    return await request<Review>(`/events/${eventId}/reviews`, {
       method: 'POST',
       body,
       signal: controller.signal,

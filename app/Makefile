@@ -106,27 +106,42 @@ index_research:
 	@$(ENVS) python3 scripts/index_research.py
 
 swagger:
-	@go run github.com/swaggo/swag/cmd/swag@latest init -g main.go -d ./cmd/server,./internal/controller/handlers,./internal/controller/dto,./internal/models -o docs --parseGoList=false
+	@cd ../api-tools && npm run check
 
 install:
 	go mod tidy
 	go mod download
 
 
-ALLURE_CLI := .test-tools/node_modules/.bin/allure
+ALLURE_CLI := $(CURDIR)/.test-tools/node_modules/.bin/allure
+TEST_REPORT_DIR ?= $(CURDIR)/test-report
+E2E_PLATFORM ?= docker
+E2E_PORT ?= 18080
+
+.PHONY: test test-prepare test-integration test-e2e allure-report coverage test-ci
+
+test-prepare:
+	bash tests/ci.sh prepare
 
 test:
-	mkdir -p test-report
-	rm -f allure-results/*-result.json allure-results/*-container.json
-	ALLURE_OUTPUT_PATH="$(CURDIR)" ALLURE_OUTPUT_FOLDER=allure-results go test ./internal/service -count=1 -v -coverpkg=./internal/service,./internal/repository/postgres -coverprofile=test-report/coverage.out
+	GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local REPORT_DIR="$(abspath $(TEST_REPORT_DIR))" bash tests/run.sh unit
+
+test-integration:
+	TEST_REPORT_DIR="$(abspath $(TEST_REPORT_DIR))" bash tests/ci.sh integration
+
+test-e2e:
+	TEST_REPORT_DIR="$(abspath $(TEST_REPORT_DIR))" E2E_PLATFORM="$(E2E_PLATFORM)" E2E_PORT="$(E2E_PORT)" bash tests/ci.sh e2e
 
 allure-report:
-	test -x "$(ALLURE_CLI)" || npm install --prefix .test-tools --no-package-lock --no-audit --no-fund allure-commandline@2.46.1
-	$(ALLURE_CLI) generate allure-results --single-file --clean -o test-report/allure
+	@if [ "$(GITHUB_ACTIONS)" = true ]; then \
+		(test -x "$(ALLURE_CLI)" || npm install --prefix .test-tools --no-package-lock --no-audit --no-fund allure-commandline@2.46.1) && \
+		ALLURE_CLI="$(ALLURE_CLI)" node tests/report.mjs "$(abspath $(TEST_REPORT_DIR))" --generate; \
+	else \
+		TEST_REPORT_DIR="$(abspath $(TEST_REPORT_DIR))" bash tests/ci.sh report; \
+	fi
 
 coverage:
-	go tool cover -html=test-report/coverage.out -o test-report/coverage.html
+	go tool cover -html="$(TEST_REPORT_DIR)/unit.coverage.out" -o "$(TEST_REPORT_DIR)/coverage.html"
 
-.PHONY: test-ci
 test-ci:
 	bash tests/ci.sh

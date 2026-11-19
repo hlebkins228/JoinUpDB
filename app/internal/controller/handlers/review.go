@@ -38,7 +38,7 @@ func NewReviewHandler(ctx context.Context, logger *zap.Logger, reviewSvc ReviewS
 // @Failure 409 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
 // @Security BearerAuth
-// @Router /api/v1/user/event/{id}/review [post]
+// @Router /api/v1/events/{id}/reviews [post]
 func (h *ReviewHandler) CreateReview(c *echo.Context) error {
 	userID := utils.GetUserID(c)
 	if userID == nil {
@@ -99,7 +99,7 @@ func (h *ReviewHandler) CreateReview(c *echo.Context) error {
 // @Failure 400 {object} dto.Msg
 // @Failure 404 {object} dto.Msg
 // @Failure 500 {object} dto.Msg
-// @Router /api/v1/event/{id}/review [get]
+// @Router /api/v1/events/{id}/reviews [get]
 func (h *ReviewHandler) ListReviews(c *echo.Context) error {
 	var req dto.ReviewIDRequest
 	if err := c.Bind(&req); err != nil {

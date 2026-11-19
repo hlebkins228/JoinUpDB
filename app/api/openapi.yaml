@@ -1,0 +1,1213 @@
+openapi: 3.1.0
+info:
+  title: JoinUp public REST API
+  version: 1.0.0
+  description: Контракт ЛР №2. Ресурсы доступны под /api/v1. JSON, даты RFC 3339 UTC, положительные идентификаторы.
+    Bearer JWT для защищённых операций; production требует HTTPS. Внутренние таблицы и хеши паролей не публикуются.
+    Все операции существующей SPA покрыты. Потоковые протоколы для текущих сценариев не требуются.
+servers:
+- url: http://localhost:8080
+  description: Локальный сервер
+tags:
+- name: tokens
+  description: Выдача JWT
+- name: users
+  description: Пользователи и профиль
+- name: events
+  description: События и личные подборки
+- name: participants
+  description: Участие текущего пользователя
+- name: categories
+  description: Категории событий
+- name: images
+  description: Аватары и обложки
+- name: reviews
+  description: Отзывы и оценки
+security:
+- bearerAuth: []
+paths:
+  /api/v1/tokens:
+    post:
+      tags:
+      - tokens
+      summary: Получить JWT
+      description: 'Выдаёт JWT со сроком действия 2 часа. Это выдача учётных данных, а не создание серверной сессии.
+        Cache-Control: no-store. Токен передаётся в Authorization: Bearer; выход из SPA удаляет его локально.
+        Для входа передайте оба заголовка login и password либо JSON credentials.
+        Если задан хотя бы один непустой заголовок login/password, оба значения берутся из заголовков, JSON игнорируется.'
+      operationId: createToken
+      parameters:
+      - name: login
+        in: header
+        required: false
+        description: Логин; передаётся вместе с заголовком password вместо JSON.
+        schema:
+          type: string
+          minLength: 1
+      - name: password
+        in: header
+        required: false
+        description: Пароль; передаётся вместе с заголовком login вместо JSON.
+        schema:
+          type: string
+          minLength: 1
+      responses:
+        '200':
+          description: Операция выполнена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+              example:
+                token: example.jwt.token
+          headers:
+            Cache-Control:
+              description: Запрет хранения ответа с токеном
+              schema:
+                type: string
+                const: no-store
+              example: no-store
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security: []
+      requestBody:
+        required: false
+        description: Обязателен, если учётные данные не переданы в заголовках login/password.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+            example:
+              login: anna
+              password: example-password
+  /api/v1/users:
+    post:
+      tags:
+      - users
+      summary: Зарегистрировать пользователя
+      description: Зарегистрировать пользователя
+      operationId: createUser
+      responses:
+        '201':
+          description: Ресурс создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceID'
+              example:
+                id: 1
+          headers:
+            Location:
+              description: URI созданного ресурса
+              schema:
+                type: string
+              example: /api/v1/users/1
+        '400':
+          $ref: '#/components/responses/Error400'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+            example:
+              name: Анна
+              age: 25
+              city: Москва
+              login: anna
+              password: example-password
+  /api/v1/users/{id}:
+    get:
+      tags:
+      - users
+      summary: Получить профиль пользователя
+      description: Получить профиль пользователя
+      operationId: getUser
+      responses:
+        '200':
+          description: Операция выполнена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              example:
+                name: Анна
+                age: 25
+                city: Москва
+                login: anna
+                id: 1
+                role: user
+                created_at: '2026-11-12T09:00:00Z'
+                created_events_count: 1
+                joined_events_count: 0
+                organizer_rating: null
+                organizer_reviews_count: 0
+        '400':
+          $ref: '#/components/responses/Error400'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '401':
+          $ref: '#/components/responses/Error401'
+      parameters:
+      - &id006
+        name: id
+        in: path
+        required: true
+        description: Идентификатор ресурса
+        schema: &id004
+          type: integer
+          minimum: 1
+        example: 1
+  /api/v1/users/me:
+    put:
+      tags:
+      - users
+      summary: Заменить редактируемые поля своего профиля
+      description: Пользователь определяется по JWT. name, age и city обязательны. Пропущенные avatar_id и telegram_login
+        очищаются. Логин, пароль и роль этим методом не изменяются.
+      operationId: replaceCurrentUser
+      responses:
+        '204':
+          description: Операция выполнена
+        '400':
+          $ref: '#/components/responses/Error400'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '401':
+          $ref: '#/components/responses/Error401'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserReplace'
+            example:
+              name: Анна
+              age: 25
+              city: Москва
+  /api/v1/users/me/events:
+    get:
+      tags:
+      - events
+      summary: Получить созданные мной события
+      description: Получить созданные мной события
+      operationId: listCreatedEvents
+      responses:
+        '200':
+          description: Операция выполнена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Events'
+              example:
+                events:
+                - &id001
+                  name: Встреча настольных игр
+                  event_time: '2100-01-01T12:00:00Z'
+                  city: Москва
+                  location: &id005
+                    name: Парк Горького
+                    address: Москва, Крымский Вал, 9
+                    latitude: 55.73
+                    longitude: 37.6
+                  desc: Встреча в парке
+                  id: 1
+                  creator_id: 1
+                  created_at: '2026-11-12T09:00:00Z'
+                  updated_at: '2026-11-12T09:00:00Z'
+                  deleted: false
+                  creator:
+                    id: 1
+                    name: Анна
+                  members: []
+                  categories: []
+        '500':
+          $ref: '#/components/responses/Error500'
+        '401':
+          $ref: '#/components/responses/Error401'
+  /api/v1/users/me/participations:
+    get:
+      tags:
+      - events
+      summary: Получить события с моим участием
+      description: Получить события с моим участием
+      operationId: listJoinedEvents
+      responses:
+        '200':
+          description: Операция выполнена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Events'
+              example:
+                events:
+                - *id001
+        '500':
+          $ref: '#/components/responses/Error500'
+        '401':
+          $ref: '#/components/responses/Error401'
+  /api/v1/categories:
+    get:
+      tags:
+      - categories
+      summary: Получить справочник категорий
+      description: Получить справочник категорий
+      operationId: listCategories
+      responses:
+        '200':
+          description: Операция выполнена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Categories'
+              example:
+                categories:
+                - id: 1
+                  name: игры
+        '500':
+          $ref: '#/components/responses/Error500'
+      security: []
+  /api/v1/events:
+    get:
+      tags:
+      - events
+      summary: Найти события
+      description: Возвращает неудалённые события, упорядоченные по дате и идентификатору. Фильтры комбинируются
+        через AND. Пагинация выполняется SPA; серверный лимит и постраничная выдача не предусмотрены.
+      operationId: listEvents
+      responses:
+        '200':
+          description: Операция выполнена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Events'
+              example:
+                events:
+                - *id001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security: []
+      parameters:
+      - name: name
+        in: query
+        description: Подстрока названия
+        schema: &id002
+          type: string
+        example: Встреча
+      - name: city
+        in: query
+        description: Город проведения
+        schema: *id002
+        example: Москва
+      - name: event_from
+        in: query
+        description: Начало интервала включительно
+        schema: &id003
+          type: string
+          format: date-time
+        example: '2099-01-01T00:00:00Z'
+      - name: event_to
+        in: query
+        description: Конец интервала включительно
+        schema: *id003
+        example: '2101-01-01T00:00:00Z'
+      - name: category_id
+        in: query
+        description: Событие должно иметь все указанные категории; параметр можно повторять
+        schema:
+          type: array
+          items: *id004
+        example:
+        - 1
+        - 2
+        style: form
+        explode: true
+    post:
+      tags:
+      - events
+      summary: Создать событие и локацию
+      description: Дата должна быть в будущем. Создание события и локации выполняется атомарно. Организатор определяется
+        по JWT. Категории и обложка назначаются отдельными запросами.
+      operationId: createEvent
+      responses:
+        '201':
+          description: Ресурс создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceID'
+              example:
+                id: 1
+          headers:
+            Location:
+              description: URI созданного ресурса
+              schema:
+                type: string
+              example: /api/v1/events/1
+        '400':
+          $ref: '#/components/responses/Error400'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '401':
+          $ref: '#/components/responses/Error401'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventCreate'
+            example:
+              name: Встреча настольных игр
+              event_time: '2100-01-01T12:00:00Z'
+              city: Москва
+              location: *id005
+              desc: Встреча в парке
+  /api/v1/events/{id}:
+    get:
+      tags:
+      - events
+      summary: Получить событие
+      description: Включает место, категории, организатора и участников. Мягко удалённая запись доступна как tombstone
+        с deleted=true; поиск и личные списки её не возвращают.
+      operationId: getEvent
+      responses:
+        '200':
+          description: Операция выполнена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+              example: *id001
+        '400':
+          $ref: '#/components/responses/Error400'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security: []
+      parameters:
+      - *id006
+    put:
+      tags:
+      - events
+      summary: Заменить редактируемые поля события
+      description: Доступно организатору или администратору до наступления времени события. Обязательны название,
+        дата, город, полная локация; пропущенные описание, чат, изображение и категории очищаются. Все изменения
+        фиксируются одной транзакцией.
+      operationId: replaceEvent
+      responses:
+        '204':
+          description: Операция выполнена
+        '400':
+          $ref: '#/components/responses/Error400'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '401':
+          $ref: '#/components/responses/Error401'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventReplace'
+            example:
+              name: Встреча настольных игр
+              event_time: '2100-01-01T12:00:00Z'
+              city: Москва
+              location: *id005
+              desc: Встреча в парке
+              category_ids:
+              - 1
+      parameters:
+      - *id006
+    patch:
+      tags:
+      - events
+      summary: Частично изменить событие
+      description: JSON Merge Patch (RFC 7396). Пропущенные поля сохраняются, вложенная location объединяется рекурсивно,
+        массив category_ids заменяется целиком. null очищает необязательное поле; удаление обязательного поля отклоняется.
+        id, creator_id, created_at, deleted и прочие серверные поля запрещены. Доступно автору и администратору.
+        Изменения сохраняются одной транзакцией; конкурентные изменения без If-Match могут перезаписываться.
+      operationId: patchEvent
+      responses:
+        '204':
+          description: Операция выполнена
+        '400':
+          $ref: '#/components/responses/Error400'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '415':
+          $ref: '#/components/responses/Error415'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '401':
+          $ref: '#/components/responses/Error401'
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/EventPatch'
+            example:
+              name: Обновлённая встреча
+              location:
+                name: Главный вход
+      parameters:
+      - *id006
+    delete:
+      tags:
+      - events
+      summary: Мягко удалить событие
+      description: Доступно автору и администратору. Устанавливает deleted=true, журналируется триггером PostgreSQL.
+        Повторное удаление возвращает 204 без повторной записи перехода в журнал.
+      operationId: deleteEvent
+      responses:
+        '204':
+          description: Операция выполнена
+        '400':
+          $ref: '#/components/responses/Error400'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '401':
+          $ref: '#/components/responses/Error401'
+      parameters:
+      - *id006
+  /api/v1/events/{id}/participants/me:
+    put:
+      tags:
+      - participants
+      summary: Записаться на событие
+      description: Записаться на событие. Текущий пользователь определяется по JWT. Повторный запрос с уже достигнутым
+        состоянием возвращает 204. Запись разрешена до времени события; отсутствие самого события — 404.
+      operationId: putParticipation
+      responses:
+        '204':
+          description: Операция выполнена
+        '400':
+          $ref: '#/components/responses/Error400'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '401':
+          $ref: '#/components/responses/Error401'
+      parameters:
+      - *id006
+    delete:
+      tags:
+      - participants
+      summary: Отказаться от участия
+      description: Отказаться от участия. Текущий пользователь определяется по JWT. Повторный запрос с уже достигнутым
+        состоянием возвращает 204. Запись разрешена до времени события; отсутствие самого события — 404.
+      operationId: deleteParticipation
+      responses:
+        '204':
+          description: Операция выполнена
+        '400':
+          $ref: '#/components/responses/Error400'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '401':
+          $ref: '#/components/responses/Error401'
+      parameters:
+      - *id006
+  /api/v1/events/{id}/categories/{categoryId}:
+    put:
+      tags:
+      - categories
+      summary: Назначить категорию событию
+      description: Для автора или администратора будущего события. Повторное назначение возвращает 204. Полный набор
+        категорий заменяется через PUT или PATCH события, включая очистку массивом [].
+      operationId: putEventCategory
+      responses:
+        '204':
+          description: Операция выполнена
+        '400':
+          $ref: '#/components/responses/Error400'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '401':
+          $ref: '#/components/responses/Error401'
+      parameters:
+      - *id006
+      - name: categoryId
+        in: path
+        required: true
+        description: Идентификатор категории
+        schema: *id004
+        example: 1
+  /api/v1/images:
+    post:
+      tags:
+      - images
+      summary: Загрузить изображение
+      description: Файл в multipart-поле image. Возвращённый идентификатор назначается аватару через PUT /users/me
+        или обложке через PUT/PATCH события.
+      operationId: createImage
+      responses:
+        '201':
+          description: Ресурс создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceID'
+              example:
+                id: 1
+          headers:
+            Location:
+              description: URI созданного ресурса
+              schema:
+                type: string
+              example: /api/v1/images/1
+        '400':
+          $ref: '#/components/responses/Error400'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '401':
+          $ref: '#/components/responses/Error401'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImageUpload'
+  /api/v1/events/{id}/images:
+    post:
+      tags:
+      - images
+      summary: Загрузить и назначить обложку события
+      description: Для автора или администратора будущего события. Создаёт новое изображение и атомарно назначает
+        его обложкой. Повторный POST создаёт новое изображение.
+      operationId: createEventImage
+      responses:
+        '201':
+          description: Ресурс создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceID'
+              example:
+                id: 1
+          headers:
+            Location:
+              description: URI созданного ресурса
+              schema:
+                type: string
+              example: /api/v1/images/1
+        '400':
+          $ref: '#/components/responses/Error400'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '401':
+          $ref: '#/components/responses/Error401'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImageUpload'
+      parameters:
+      - *id006
+  /api/v1/images/{id}:
+    get:
+      tags:
+      - images
+      summary: Получить бинарное изображение
+      description: Получить бинарное изображение
+      operationId: getImage
+      responses:
+        '200':
+          description: Операция выполнена
+          content:
+            application/octet-stream:
+              schema: {}
+            image/*:
+              schema: {}
+        '400':
+          $ref: '#/components/responses/Error400'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security: []
+      parameters:
+      - *id006
+  /api/v1/events/{id}/reviews:
+    get:
+      tags:
+      - reviews
+      summary: Получить отзывы о событии
+      description: Получить отзывы о событии
+      operationId: listReviews
+      responses:
+        '200':
+          description: Операция выполнена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reviews'
+              example:
+                reviews:
+                - &id007
+                  id: 1
+                  event_id: 2
+                  author_id: 2
+                  rating: 5
+                  text: Отличная встреча
+                  created_at: '2026-11-12T09:00:00Z'
+                  author:
+                    id: 2
+                    name: Иван
+                    avatar_id: null
+        '400':
+          $ref: '#/components/responses/Error400'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security: []
+      parameters:
+      - *id006
+    post:
+      tags:
+      - reviews
+      summary: Оставить отзыв о событии
+      description: После наступления времени события; организатору запрещено. Один отзыв от автора на событие, текст
+        после удаления крайних пробелов длиной 1–2000 символов, оценка 1–5. Проверка фактического посещения не предусмотрена.
+        Удалённое событие недоступно для отзывов.
+      operationId: createReview
+      responses:
+        '201':
+          description: Ресурс создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+              example: *id007
+        '400':
+          $ref: '#/components/responses/Error400'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '401':
+          $ref: '#/components/responses/Error401'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreate'
+            example:
+              rating: 5
+              text: Отличная встреча
+      parameters:
+      - *id006
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Location:
+      type: object
+      properties: &id012
+        name:
+          type: string
+          minLength: 1
+        address:
+          type: string
+          minLength: 1
+        latitude:
+          type: number
+        longitude:
+          type: number
+      required:
+      - name
+      - address
+      - latitude
+      - longitude
+      additionalProperties: false
+    Category:
+      type: object
+      properties:
+        id: *id004
+        name: *id002
+      required:
+      - id
+      - name
+    Participant:
+      type: object
+      properties:
+        id: *id004
+        name: *id002
+        avatar_id: *id004
+      required:
+      - id
+      - name
+    EventCreate:
+      type: object
+      properties:
+        name: &id008
+          type: string
+          minLength: 5
+          maxLength: 100
+        desc: *id002
+        event_time: *id003
+        city: &id009
+          type: string
+          minLength: 1
+        location: &id010
+          $ref: '#/components/schemas/Location'
+        telegram_chat_url: &id011
+          type: string
+        image_id: *id004
+      required:
+      - name
+      - event_time
+      - city
+      - location
+      additionalProperties: false
+    EventReplace:
+      type: object
+      properties:
+        name: *id008
+        desc: *id002
+        event_time: *id003
+        city: *id009
+        location: *id010
+        telegram_chat_url: *id011
+        image_id: *id004
+        category_ids: &id013
+          type: array
+          items: *id004
+          uniqueItems: true
+      required:
+      - name
+      - event_time
+      - city
+      - location
+      additionalProperties: false
+    EventPatch:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 5
+          maxLength: 100
+        desc:
+          anyOf:
+          - *id002
+          - type: 'null'
+        event_time:
+          type: string
+          format: date-time
+        city:
+          type: string
+          minLength: 1
+        location:
+          type: object
+          properties: *id012
+          additionalProperties: false
+        telegram_chat_url:
+          anyOf:
+          - *id011
+          - type: 'null'
+        image_id:
+          anyOf:
+          - *id004
+          - type: 'null'
+        category_ids:
+          anyOf:
+          - *id013
+          - type: 'null'
+      additionalProperties: false
+    Event:
+      type: object
+      properties:
+        name: *id008
+        desc: *id002
+        event_time: *id003
+        city: *id009
+        location: *id010
+        telegram_chat_url: *id011
+        image_id: *id004
+        id: *id004
+        creator_id: *id004
+        created_at: *id003
+        updated_at: *id003
+        creator:
+          $ref: '#/components/schemas/Participant'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+        deleted:
+          type: boolean
+      required:
+      - id
+      - creator_id
+      - name
+      - created_at
+      - updated_at
+      - event_time
+      - city
+      - location
+      - deleted
+    Events:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+      required:
+      - events
+    Categories:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+      required:
+      - categories
+    UserCreate:
+      type: object
+      properties:
+        name: &id014
+          type: string
+          minLength: 2
+          maxLength: 100
+        age: &id015
+          type: integer
+          minimum: 1
+        city: &id016
+          type: string
+          minLength: 1
+        telegram_login: &id017
+          type:
+          - string
+          - 'null'
+        avatar_id: &id018
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+        login:
+          type: string
+          minLength: 3
+          maxLength: 100
+        password:
+          type: string
+          minLength: 6
+          maxLength: 255
+          writeOnly: true
+      required:
+      - name
+      - age
+      - city
+      - login
+      - password
+      additionalProperties: false
+    UserReplace:
+      type: object
+      properties:
+        name: *id014
+        age: *id015
+        city: *id016
+        telegram_login: *id017
+        avatar_id: *id018
+      required:
+      - name
+      - age
+      - city
+      additionalProperties: false
+    User:
+      type: object
+      properties:
+        name: *id014
+        age: *id015
+        city: *id016
+        telegram_login: *id017
+        avatar_id: *id018
+        id: *id004
+        login: *id002
+        role:
+          type: string
+        created_at: *id003
+        created_events_count:
+          type: integer
+          minimum: 0
+        joined_events_count:
+          type: integer
+          minimum: 0
+        organizer_rating:
+          type:
+          - number
+          - 'null'
+          minimum: 1
+          maximum: 5
+        organizer_reviews_count:
+          type: integer
+          minimum: 0
+      required:
+      - id
+      - name
+      - age
+      - city
+      - login
+      - role
+      - created_at
+      - created_events_count
+      - joined_events_count
+      - organizer_rating
+      - organizer_reviews_count
+    Credentials:
+      type: object
+      properties:
+        login:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+          writeOnly: true
+      required:
+      - login
+      - password
+      additionalProperties: false
+    Token:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+      required:
+      - token
+    ResourceID:
+      type: object
+      properties:
+        id: *id004
+      required:
+      - id
+    Error:
+      type: object
+      properties:
+        msg: *id002
+      required:
+      - msg
+    ReviewCreate:
+      type: object
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required:
+      - rating
+      - text
+      additionalProperties: false
+    Review:
+      type: object
+      properties:
+        id: *id004
+        event_id: *id004
+        author_id: *id004
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        created_at: *id003
+        author:
+          type: object
+          properties:
+            id: *id004
+            name: *id002
+            avatar_id:
+              type:
+              - integer
+              - 'null'
+              minimum: 1
+          required:
+          - id
+          - name
+          - avatar_id
+      required:
+      - id
+      - event_id
+      - author_id
+      - rating
+      - text
+      - created_at
+      - author
+    Reviews:
+      type: object
+      properties:
+        reviews:
+          type: array
+          items:
+            $ref: '#/components/schemas/Review'
+      required:
+      - reviews
+    ImageUpload:
+      type: object
+      properties:
+        image:
+          type: string
+          format: binary
+      required:
+      - image
+      additionalProperties: false
+  responses:
+    Error400:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            msg: Некорректный запрос
+    Error401:
+      description: Требуется действительный Bearer JWT
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            msg: Требуется действительный Bearer JWT
+    Error403:
+      description: Недостаточно прав
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            msg: Недостаточно прав
+    Error404:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            msg: Ресурс не найден
+    Error409:
+      description: 'Конфликт: ресурс уже существует'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            msg: 'Конфликт: ресурс уже существует'
+    Error415:
+      description: Неподдерживаемый тип содержимого
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            msg: Неподдерживаемый тип содержимого
+    Error422:
+      description: Нарушены ограничения входных данных
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            msg: Нарушены ограничения входных данных
+    Error500:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            msg: Внутренняя ошибка сервера

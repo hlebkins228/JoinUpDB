@@ -1,7 +1,6 @@
 package service
 
 import (
-	"JoinUp/internal/controller/dto"
 	"JoinUp/internal/exceptions"
 	"JoinUp/internal/models"
 	appjwt "JoinUp/internal/utils/jwt"
@@ -26,8 +25,7 @@ func NewUserService(userRepo UserRepo, imageRepo ImageRepo, eventRepo EventRepo,
 	return UserService{userRepo: userRepo, imageRepo: imageRepo, eventRepo: eventRepo, jwtMgr: jwtMgr}
 }
 
-func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest) (int, error) {
-	user := req.ToModel()
+func (s *UserService) CreateUser(ctx context.Context, user models.User) (int, error) {
 	user.CreatedAt = time.Now().UTC()
 	user.Role = "user"
 
@@ -54,7 +52,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 	return id, err
 }
 
-func (s *UserService) GetUser(ctx context.Context, id int) (*dto.UserResponse, error) {
+func (s *UserService) GetUser(ctx context.Context, id int) (*models.User, error) {
 	user, err := s.userRepo.GetUser(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("%w: no user with id = %d", exceptions.ErrNotFound, id)
@@ -63,31 +61,14 @@ func (s *UserService) GetUser(ctx context.Context, id int) (*dto.UserResponse, e
 		return nil, err
 	}
 
-	var roundedRating *float64
 	if user.OrganizerRating != nil {
-		v := roundHalfUpTenth(*user.OrganizerRating)
-		roundedRating = &v
+		rating := roundHalfUpTenth(*user.OrganizerRating)
+		user.OrganizerRating = &rating
 	}
-
-	return &dto.UserResponse{
-		ID:                    user.ID,
-		Name:                  user.Name,
-		Age:                   user.Age,
-		Login:                 user.Login,
-		CreatedAt:             user.CreatedAt,
-		City:                  user.City,
-		TelegramLogin:         user.TelegramLogin,
-		AvatarID:              user.AvatarID,
-		Role:                  user.Role,
-		CreatedEventsCount:    user.CreatedEventsCount,
-		JoinedEventsCount:     user.JoinedEventsCount,
-		OrganizerRating:       roundedRating,
-		OrganizerReviewsCount: user.OrganizerReviewsCount,
-	}, nil
+	return user, nil
 }
 
-func (s *UserService) UpdateUser(ctx context.Context, id int, req *dto.UpdateUserRequest) error {
-	user := req.ToModel()
+func (s *UserService) UpdateUser(ctx context.Context, id int, user models.User) error {
 	user.ID = id
 
 	if user.AvatarID != nil {
@@ -114,7 +95,7 @@ func (s *UserService) UploadImage(ctx context.Context, name string, data []byte)
 	})
 }
 
-func (s *UserService) GetImage(ctx context.Context, id int) (*dto.ImageFileResponse, error) {
+func (s *UserService) GetImage(ctx context.Context, id int) (*models.Image, error) {
 	image, err := s.imageRepo.GetImage(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("%w: no image with id = %d", exceptions.ErrNotFound, id)
@@ -123,10 +104,7 @@ func (s *UserService) GetImage(ctx context.Context, id int) (*dto.ImageFileRespo
 		return nil, err
 	}
 
-	return &dto.ImageFileResponse{
-		Name: image.Name,
-		Data: image.Data,
-	}, nil
+	return image, nil
 }
 
 func (s *UserService) Auth(ctx context.Context, login, password string) (string, error) {

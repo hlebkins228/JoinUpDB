@@ -175,3 +175,80 @@ func timeToUTC(value *time.Time) *time.Time {
 	utc := value.UTC()
 	return &utc
 }
+
+func EventsFromModels(events []*models.Event) *EventsResponse {
+	response := &EventsResponse{Events: make([]*EventResponse, 0, len(events))}
+	for _, event := range events {
+		response.Events = append(response.Events, EventFromModel(event))
+	}
+	return response
+}
+
+func CategoriesFromModels(categories []*models.Category) *CategoriesResponse {
+	response := &CategoriesResponse{Categories: make([]*CategoryResponse, 0, len(categories))}
+	for _, category := range categories {
+		response.Categories = append(response.Categories, &CategoryResponse{ID: category.ID, Name: category.Name})
+	}
+	return response
+}
+
+func EventFromModel(event *models.Event) *EventResponse {
+	var creator *EventMember
+	if event.Creator.ID != 0 {
+		creator = modelMemberToDTO(event.Creator)
+	}
+
+	return &EventResponse{
+		ID:              event.ID,
+		CreatorID:       event.CreatorID,
+		Name:            event.Name,
+		Desc:            event.Desc,
+		CreatedAt:       event.CreatedAt,
+		UpdatedAt:       event.UpdatedAt,
+		EventTime:       event.EventTime,
+		TelegramChatURL: event.TelegramChatURL,
+		City:            event.City,
+		Creator:         creator,
+		Members:         modelMembersToDTO(event.Members),
+		Categories:      modelCategoriesToDTO(event.Categories),
+		Location:        modelLocationToDTO(event.Location),
+		ImageID:         event.ImageID,
+		Deleted:         event.Deleted,
+	}
+}
+
+func modelCategoriesToDTO(categories []models.Category) []*CategoryResponse {
+	resp := make([]*CategoryResponse, 0, len(categories))
+	for _, category := range categories {
+		resp = append(resp, &CategoryResponse{
+			ID:   category.ID,
+			Name: category.Name,
+		})
+	}
+	return resp
+}
+
+func modelMembersToDTO(members []models.EventMember) []*EventMember {
+	resp := make([]*EventMember, 0, len(members))
+	for _, member := range members {
+		resp = append(resp, modelMemberToDTO(member))
+	}
+	return resp
+}
+
+func modelMemberToDTO(member models.EventMember) *EventMember {
+	return &EventMember{
+		ID:       member.ID,
+		Name:     member.Name,
+		AvatarID: member.AvatarID,
+	}
+}
+
+func modelLocationToDTO(loc models.Location) *EventLocation {
+	return &EventLocation{
+		Name:      loc.Name,
+		Longitude: &loc.Longitude,
+		Latitude:  &loc.Latitude,
+		Address:   loc.Address,
+	}
+}

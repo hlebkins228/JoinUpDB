@@ -21,7 +21,7 @@ func NewServer(ctx context.Context, logger *zap.Logger, eventSvc handlers.EventS
 
 	eventHandler := handlers.NewEventHandler(ctx, logger, eventSvc, userSvc, search)
 	userHandler := handlers.NewUserHandler(ctx, logger, userSvc)
-	reviewHandler := handlers.NewReviewHandler(ctx, logger, reviewSvc)
+	reviewHandler := handlers.NewReviewHandler(ctx, logger, reviewSvc, userSvc)
 	e.Use(middleware.Recover())
 	e.Use(customWare.RequestID())
 	e.Use(customWare.RequestLogger(logger))
@@ -38,7 +38,8 @@ func NewServer(ctx context.Context, logger *zap.Logger, eventSvc handlers.EventS
 	apiGroup.GET("/events/:id", eventHandler.GetEvent)
 
 	protected := apiGroup.Group("")
-	protected.Use(customWare.JWTAuthorization(logger, jwtMgr))
+	auth := customWare.JWTAuthorization(logger, jwtMgr)
+	protected.Use(auth)
 	protected.PUT("/users/me", userHandler.UpdateUser)
 	protected.GET("/users/:id", userHandler.GetUser)
 	protected.POST("/images", userHandler.UploadImage)
@@ -53,6 +54,31 @@ func NewServer(ctx context.Context, logger *zap.Logger, eventSvc handlers.EventS
 	protected.PUT("/events/:id/categories/:categoryId", eventHandler.AddEventCategory)
 	protected.DELETE("/events/:id", eventHandler.DeleteEvent)
 	protected.POST("/events/:id/reviews", reviewHandler.CreateReview)
+
+	registerV2(e, v2Operations{
+		createToken:         userHandler.Auth,
+		createUser:          userHandler.CreateUser,
+		getUser:             userHandler.GetUser,
+		replaceCurrentUser:  userHandler.UpdateUser,
+		listCreatedEvents:   eventHandler.ListCreatedEvents,
+		listJoinedEvents:    eventHandler.ListJoinedEvents,
+		listCategories:      eventHandler.ListCategories,
+		listEvents:          eventHandler.SearchEvents,
+		createEvent:         eventHandler.CreateEvent,
+		getEvent:            eventHandler.GetEvent,
+		replaceEvent:        eventHandler.UpdateEvent,
+		patchEvent:          eventHandler.PatchEvent,
+		deleteEvent:         eventHandler.DeleteEvent,
+		putParticipation:    eventHandler.JoinEvent,
+		deleteParticipation: eventHandler.LeaveEvent,
+		putEventCategory:    eventHandler.AddEventCategory,
+		createImage:         userHandler.UploadImage,
+		createEventImage:    eventHandler.UploadEventImage,
+		getImage:            userHandler.GetImage,
+		listReviews:         reviewHandler.ListReviews,
+		createReview:        reviewHandler.CreateReview,
+	}, auth, newV2Requests())
+
 	e.GET("/openapi.yaml", func(c *echo.Context) error {
 		return c.Blob(http.StatusOK, "application/yaml", api.Specification)
 	})

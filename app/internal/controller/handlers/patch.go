@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"JoinUp/internal/controller/dto"
+	"JoinUp/internal/exceptions"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"mime"
 	"net/http"
@@ -47,10 +49,14 @@ func (h *EventHandler) PatchEvent(c *echo.Context) error {
 	if allowed, err := h.checkPerms(c, id, *userID, role); !allowed {
 		return err
 	}
-	event, err := h.eventSvc.GetEvent(c.Request().Context(), id)
+	model, err := h.eventSvc.GetEvent(c.Request().Context(), id)
+	if errors.Is(err, exceptions.ErrNotFound) {
+		return c.JSON(http.StatusNotFound, dto.Msg{Msg: err.Error()})
+	}
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
+	event := dto.EventFromModel(model)
 	categoryIDs := make([]int, 0, len(event.Categories))
 	for _, category := range event.Categories {
 		categoryIDs = append(categoryIDs, category.ID)

@@ -9,7 +9,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strconv"
+	"strings"
 
 	"github.com/labstack/echo/v5"
 	"go.uber.org/zap"
@@ -50,7 +50,11 @@ func (h *UserHandler) CreateUser(c *echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, dto.Msg{Msg: getValidationMsg(err)})
 	}
 
-	id, err := h.userSvc.CreateUser(c.Request().Context(), &req)
+	if apiVersion(c) == "v2" && len(req.Password) > 72 {
+		return c.JSON(http.StatusUnprocessableEntity, dto.Msg{Msg: "password must be at most 72 bytes"})
+	}
+
+	id, err := h.userSvc.CreateUser(c.Request().Context(), req.ToModel())
 	if errors.Is(err, exceptions.ErrAlreadyExists) {
 		h.logger.Info("error on create user: login already exists", zap.Error(err))
 		return c.JSON(http.StatusConflict, dto.Msg{Msg: err.Error()})
@@ -64,7 +68,7 @@ func (h *UserHandler) CreateUser(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	c.Response().Header().Set("Location", "/api/v1/users/"+strconv.Itoa(id))
+	c.Response().Header().Set("Location", resourceLocation(c, "users", id))
 	return c.JSON(http.StatusCreated, dto.UserIDResponse{ID: id})
 }
 
@@ -103,7 +107,7 @@ func (h *UserHandler) GetUser(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, user)
+	return c.JSON(http.StatusOK, dto.UserFromModel(user))
 }
 
 // UpdateUser godoc
@@ -137,7 +141,7 @@ func (h *UserHandler) UpdateUser(c *echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, dto.Msg{Msg: getValidationMsg(err)})
 	}
 
-	err := h.userSvc.UpdateUser(c.Request().Context(), *userID, &req)
+	err := h.userSvc.UpdateUser(c.Request().Context(), *userID, req.ToModel())
 	if errors.Is(err, exceptions.ErrNotExists) || errors.Is(err, exceptions.ErrNotFound) {
 		h.logger.Info("error on update user: reference not found", zap.Error(err))
 		return c.JSON(http.StatusNotFound, dto.Msg{Msg: err.Error()})
@@ -191,7 +195,7 @@ func (h *UserHandler) UploadImage(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	c.Response().Header().Set("Location", "/api/v1/images/"+strconv.Itoa(id))
+	c.Response().Header().Set("Location", resourceLocation(c, "images", id))
 	return c.JSON(http.StatusCreated, dto.ImageIDResponse{ID: id})
 }
 
@@ -230,6 +234,9 @@ func (h *UserHandler) GetImage(c *echo.Context) error {
 	}
 
 	contentType := http.DetectContentType(image.Data)
+	if apiVersion(c) == "v2" && !strings.HasPrefix(contentType, "image/") {
+		contentType = "application/octet-stream"
+	}
 	return c.Blob(http.StatusOK, contentType, image.Data)
 }
 

@@ -1,12 +1,9 @@
 openapi: 3.1.0
 info:
   title: JoinUp public REST API
-  version: 1.0.0
-  description: Контракт ЛР №2. Ресурсы доступны под /api/v1. JSON, даты RFC 3339 UTC, положительные идентификаторы.
-    Bearer JWT для защищённых операций; production требует HTTPS. Внутренние таблицы и хеши паролей не публикуются.
-    Все операции существующей SPA покрыты. Потоковые протоколы для текущих сценариев не требуются.
+  version: 2.0.0
 servers:
-- url: http://localhost:8080
+- url: /api/v2
   description: Локальный сервер
 tags:
 - name: tokens
@@ -26,7 +23,7 @@ tags:
 security:
 - bearerAuth: []
 paths:
-  /api/v1/tokens:
+  /tokens:
     post:
       tags:
       - tokens
@@ -86,7 +83,7 @@ paths:
             example:
               login: anna
               password: example-password
-  /api/v1/users:
+  /users:
     post:
       tags:
       - users
@@ -107,7 +104,7 @@ paths:
               description: URI созданного ресурса
               schema:
                 type: string
-              example: /api/v1/users/1
+              example: /api/v2/users/1
         '400':
           $ref: '#/components/responses/Error400'
         '404':
@@ -131,7 +128,7 @@ paths:
               city: Москва
               login: anna
               password: example-password
-  /api/v1/users/{id}:
+  /users/{id}:
     get:
       tags:
       - users
@@ -177,7 +174,7 @@ paths:
           type: integer
           minimum: 1
         example: 1
-  /api/v1/users/me:
+  /users/me:
     put:
       tags:
       - users
@@ -208,7 +205,7 @@ paths:
               name: Анна
               age: 25
               city: Москва
-  /api/v1/users/me/events:
+  /users/me/events:
     get:
       tags:
       - events
@@ -248,7 +245,7 @@ paths:
           $ref: '#/components/responses/Error500'
         '401':
           $ref: '#/components/responses/Error401'
-  /api/v1/users/me/participations:
+  /users/me/participations:
     get:
       tags:
       - events
@@ -269,7 +266,7 @@ paths:
           $ref: '#/components/responses/Error500'
         '401':
           $ref: '#/components/responses/Error401'
-  /api/v1/categories:
+  /categories:
     get:
       tags:
       - categories
@@ -290,7 +287,7 @@ paths:
         '500':
           $ref: '#/components/responses/Error500'
       security: []
-  /api/v1/events:
+  /events:
     get:
       tags:
       - events
@@ -371,7 +368,7 @@ paths:
               description: URI созданного ресурса
               schema:
                 type: string
-              example: /api/v1/events/1
+              example: /api/v2/events/1
         '400':
           $ref: '#/components/responses/Error400'
         '404':
@@ -394,7 +391,7 @@ paths:
               city: Москва
               location: *id005
               desc: Встреча в парке
-  /api/v1/events/{id}:
+  /events/{id}:
     get:
       tags:
       - events
@@ -522,7 +519,7 @@ paths:
           $ref: '#/components/responses/Error401'
       parameters:
       - *id006
-  /api/v1/events/{id}/participants/me:
+  /events/{id}/participants/me:
     put:
       tags:
       - participants
@@ -567,7 +564,7 @@ paths:
           $ref: '#/components/responses/Error401'
       parameters:
       - *id006
-  /api/v1/events/{id}/categories/{categoryId}:
+  /events/{id}/categories/{categoryId}:
     put:
       tags:
       - categories
@@ -598,7 +595,7 @@ paths:
         description: Идентификатор категории
         schema: *id004
         example: 1
-  /api/v1/images:
+  /images:
     post:
       tags:
       - images
@@ -620,7 +617,7 @@ paths:
               description: URI созданного ресурса
               schema:
                 type: string
-              example: /api/v1/images/1
+              example: /api/v2/images/1
         '400':
           $ref: '#/components/responses/Error400'
         '500':
@@ -633,7 +630,7 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/ImageUpload'
-  /api/v1/events/{id}/images:
+  /events/{id}/images:
     post:
       tags:
       - images
@@ -655,7 +652,7 @@ paths:
               description: URI созданного ресурса
               schema:
                 type: string
-              example: /api/v1/images/1
+              example: /api/v2/images/1
         '400':
           $ref: '#/components/responses/Error400'
         '403':
@@ -676,7 +673,7 @@ paths:
               $ref: '#/components/schemas/ImageUpload'
       parameters:
       - *id006
-  /api/v1/images/{id}:
+  /images/{id}:
     get:
       tags:
       - images
@@ -702,7 +699,7 @@ paths:
       security: []
       parameters:
       - *id006
-  /api/v1/events/{id}/reviews:
+  /events/{id}/reviews:
     get:
       tags:
       - reviews
@@ -835,7 +832,10 @@ components:
         location: &id010
           $ref: '#/components/schemas/Location'
         telegram_chat_url: &id011
-          type: string
+          anyOf:
+          - type: string
+            format: uri
+          - const: ''
         image_id: *id004
       required:
       - name
@@ -980,7 +980,8 @@ components:
         password:
           type: string
           minLength: 6
-          maxLength: 255
+          maxLength: 72
+          description: Не более 72 байт в UTF-8.
           writeOnly: true
       required:
       - name

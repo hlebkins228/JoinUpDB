@@ -70,9 +70,9 @@ src/
 
 ## API contract
 
-The canonical OpenAPI 3.1 specification is [openapi.yaml](../app/api/openapi.yaml).
+The OpenAPI 3.1 contract for `/api/v2` is [openapi.yaml](../app/api/openapi.yaml).
 The SPA uses resource routes under `/api/v1`: `/tokens`, `/users`, `/events`,
 `/categories`, `/images`, and nested event participants and reviews.
 Authentication uses `POST /tokens` with JSON credentials. Mutations use Bearer JWT.
 The backend serves the contract at `/openapi.yaml` and Swagger UI at `/swagger/index.html`.
-See the root [README](../README.md) for laboratory 2 and offline contract validation.
+See the root [README](../README.md) for local setup and a demonstration of both API versions.

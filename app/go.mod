@@ -12,6 +12,7 @@ require (
 	github.com/ozontech/allure-go/pkg/framework v0.8.2
 	github.com/pashagolub/pgxmock/v4 v4.9.0
 	github.com/pressly/goose/v3 v3.26.0
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/stretchr/testify v1.11.1
 	github.com/swaggo/http-swagger/v2 v2.0.2
 	github.com/swaggo/swag v1.16.6
@@ -48,7 +49,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
-	github.com/swaggo/files/v2 v2.0.0 // indirect
+	github.com/swaggo/files/v2 v2.0.2 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.2.0 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect

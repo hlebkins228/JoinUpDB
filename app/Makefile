@@ -1,4 +1,4 @@
-.PHONY: build migrate_up migrate_down migrate_create run_local run_cli stop_local swagger test allure-report install \
+.PHONY: build migrate_up migrate_down migrate_create run_local run_cli stop_local api_generate swagger test allure-report install \
 	run_db stop_db run_mongo stop_mongo mongo_seed run_server seed_db dicebear_images check_roles index_research
 
 POSTGRES_CONTAINER := join_up_db
@@ -105,7 +105,11 @@ check_roles:
 index_research:
 	@$(ENVS) python3 scripts/index_research.py
 
+api_generate:
+	@go generate ./api
+
 swagger:
+	@cd api && go run ./generate -check
 	@cd ../api-tools && npm run check
 
 install:

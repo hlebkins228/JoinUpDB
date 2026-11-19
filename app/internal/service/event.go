@@ -1,7 +1,6 @@
 package service
 
 import (
-	"JoinUp/internal/controller/dto"
 	"JoinUp/internal/exceptions"
 	"JoinUp/internal/models"
 	"context"
@@ -22,12 +21,11 @@ func NewEventService(uow UOW, eventRepo EventRepo, userRepo UserRepo, imageRepo 
 	return EventService{uow: uow, eventRepo: eventRepo, userRepo: userRepo, imageRepo: imageRepo}
 }
 
-func (s *EventService) CreateEvent(ctx context.Context, req *dto.CreateEventRequest, userID int) (int, error) {
-	if eventAlreadyPassed(req.EventTime) {
+func (s *EventService) CreateEvent(ctx context.Context, event models.Event, userID int) (int, error) {
+	if eventAlreadyPassed(event.EventTime) {
 		return 0, fmt.Errorf("%w: event time must not be in the past", exceptions.ErrEventAlreadyPassed)
 	}
 
-	event := req.ToModel()
 	event.CreatedAt = time.Now().UTC()
 	event.UpdatedAt = event.CreatedAt
 	event.Deleted = false
@@ -67,18 +65,17 @@ func (s *EventService) CreateEvent(ctx context.Context, req *dto.CreateEventRequ
 	return id, s.uow.Commit(ctx)
 }
 
-func (s *EventService) GetEvent(ctx context.Context, id int) (*dto.EventResponse, error) {
+func (s *EventService) GetEvent(ctx context.Context, id int) (*models.Event, error) {
 	event, err := s.eventRepo.GetEvent(ctx, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("%w: no event with id = %d", exceptions.ErrNotFound, id)
 	} else if err != nil {
 		return nil, err
 	}
-	return modelToEventResponseDTO(event), nil
+	return event, nil
 }
 
-func (s *EventService) UpdateEvent(ctx context.Context, req *dto.UpdateEventRequest) error {
-	event := req.ToModel()
+func (s *EventService) UpdateEvent(ctx context.Context, event models.Event, categoryIDs []int) error {
 	now := time.Now().UTC()
 	ctx, err := s.uow.BeginTx(ctx)
 	if err != nil {
@@ -107,7 +104,7 @@ func (s *EventService) UpdateEvent(ctx context.Context, req *dto.UpdateEventRequ
 		}
 	}
 
-	if req.CategoryIDs != nil {
+	if categoryIDs != nil {
 		categories, err := s.eventRepo.ListCategories(ctx)
 		if err != nil {
 			return err
@@ -116,8 +113,8 @@ func (s *EventService) UpdateEvent(ctx context.Context, req *dto.UpdateEventRequ
 		for _, category := range categories {
 			byID[category.ID] = category
 		}
-		event.Categories = make([]models.Category, 0, len(req.CategoryIDs))
-		for _, id := range req.CategoryIDs {
+		event.Categories = make([]models.Category, 0, len(categoryIDs))
+		for _, id := range categoryIDs {
 			category, ok := byID[id]
 			if !ok {
 				return fmt.Errorf("%w: category with id = %d not found", exceptions.ErrNotExists, id)
@@ -188,32 +185,12 @@ func (s *EventService) LeaveEvent(ctx context.Context, eventID int, userID int) 
 	return err
 }
 
-func (s *EventService) ListJoinedEvents(ctx context.Context, userID int) (*dto.EventsResponse, error) {
-	events, err := s.eventRepo.ListJoinedEvents(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	resp := &dto.EventsResponse{Events: make([]*dto.EventResponse, 0, len(events))}
-	for _, event := range events {
-		resp.Events = append(resp.Events, modelToEventResponseDTO(event))
-	}
-
-	return resp, nil
+func (s *EventService) ListJoinedEvents(ctx context.Context, userID int) ([]*models.Event, error) {
+	return s.eventRepo.ListJoinedEvents(ctx, userID)
 }
 
-func (s *EventService) ListCreatedEvents(ctx context.Context, userID int) (*dto.EventsResponse, error) {
-	events, err := s.eventRepo.ListCreatedEvents(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	resp := &dto.EventsResponse{Events: make([]*dto.EventResponse, 0, len(events))}
-	for _, event := range events {
-		resp.Events = append(resp.Events, modelToEventResponseDTO(event))
-	}
-
-	return resp, nil
+func (s *EventService) ListCreatedEvents(ctx context.Context, userID int) ([]*models.Event, error) {
+	return s.eventRepo.ListCreatedEvents(ctx, userID)
 }
 
 func (s *EventService) UploadEventImage(ctx context.Context, eventID int, name string, data []byte) (int, error) {
@@ -250,102 +227,33 @@ func (s *EventService) UploadEventImage(ctx context.Context, eventID int, name s
 	return imageID, s.uow.Commit(ctx)
 }
 
-func (s *EventService) AddEventCategory(ctx context.Context, req *dto.AddEventCategoryRequest) error {
-	event, err := s.eventRepo.GetEvent(ctx, req.EventID)
+func (s *EventService) AddEventCategory(ctx context.Context, eventID, categoryID int) error {
+	event, err := s.eventRepo.GetEvent(ctx, eventID)
 	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("%w: no event with id = %d", exceptions.ErrNotFound, req.EventID)
+		return fmt.Errorf("%w: no event with id = %d", exceptions.ErrNotFound, eventID)
 	}
 	if err != nil {
 		return err
 	}
 	if eventAlreadyPassed(event.EventTime) {
-		return fmt.Errorf("%w: event id = %d already passed", exceptions.ErrEventAlreadyPassed, req.EventID)
+		return fmt.Errorf("%w: event id = %d already passed", exceptions.ErrEventAlreadyPassed, eventID)
 	}
 
-	err = s.eventRepo.AddEventCategory(ctx, req.EventID, req.CategoryID)
+	err = s.eventRepo.AddEventCategory(ctx, eventID, categoryID)
 	if errors.Is(err, exceptions.ErrNotFound) {
-		return fmt.Errorf("%w: no event with id = %d", exceptions.ErrNotFound, req.EventID)
+		return fmt.Errorf("%w: no event with id = %d", exceptions.ErrNotFound, eventID)
 	}
 	if errors.Is(err, exceptions.ErrNotExists) {
-		return fmt.Errorf("%w: category with id = %d not found", exceptions.ErrNotExists, req.CategoryID)
+		return fmt.Errorf("%w: category with id = %d not found", exceptions.ErrNotExists, categoryID)
 	}
 	if errors.Is(err, exceptions.ErrAlreadyExists) {
-		return fmt.Errorf("%w: category id = %d already added to event id = %d", exceptions.ErrAlreadyExists, req.CategoryID, req.EventID)
+		return fmt.Errorf("%w: category id = %d already added to event id = %d", exceptions.ErrAlreadyExists, categoryID, eventID)
 	}
 	return err
 }
 
-func (s *EventService) ListCategories(ctx context.Context) (*dto.CategoriesResponse, error) {
-	categories, err := s.eventRepo.ListCategories(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	resp := &dto.CategoriesResponse{Categories: make([]*dto.CategoryResponse, 0, len(categories))}
-	for _, category := range categories {
-		resp.Categories = append(resp.Categories, &dto.CategoryResponse{
-			ID:   category.ID,
-			Name: category.Name,
-		})
-	}
-
-	return resp, nil
-}
-
-func modelToEventResponseDTO(event *models.Event) *dto.EventResponse {
-	return &dto.EventResponse{
-		ID:              event.ID,
-		CreatorID:       event.CreatorID,
-		Name:            event.Name,
-		Desc:            event.Desc,
-		CreatedAt:       event.CreatedAt,
-		UpdatedAt:       event.UpdatedAt,
-		EventTime:       event.EventTime,
-		TelegramChatURL: event.TelegramChatURL,
-		City:            event.City,
-		Creator:         modelMemberToDTO(event.Creator),
-		Members:         modelMembersToDTO(event.Members),
-		Categories:      modelCategoriesToDTO(event.Categories),
-		Location:        modelLocationToDTO(event.Location),
-		ImageID:         event.ImageID,
-		Deleted:         event.Deleted,
-	}
-}
-
-func modelCategoriesToDTO(categories []models.Category) []*dto.CategoryResponse {
-	resp := make([]*dto.CategoryResponse, 0, len(categories))
-	for _, category := range categories {
-		resp = append(resp, &dto.CategoryResponse{
-			ID:   category.ID,
-			Name: category.Name,
-		})
-	}
-	return resp
-}
-
-func modelMembersToDTO(members []models.EventMember) []*dto.EventMember {
-	resp := make([]*dto.EventMember, 0, len(members))
-	for _, member := range members {
-		resp = append(resp, modelMemberToDTO(member))
-	}
-	return resp
-}
-
-func modelMemberToDTO(member models.EventMember) *dto.EventMember {
-	return &dto.EventMember{
-		ID:       member.ID,
-		Name:     member.Name,
-		AvatarID: member.AvatarID,
-	}
-}
-
-func modelLocationToDTO(loc models.Location) *dto.EventLocation {
-	return &dto.EventLocation{
-		Name:      loc.Name,
-		Longitude: &loc.Longitude,
-		Latitude:  &loc.Latitude,
-		Address:   loc.Address,
-	}
+func (s *EventService) ListCategories(ctx context.Context) ([]*models.Category, error) {
+	return s.eventRepo.ListCategories(ctx)
 }
 
 func eventAlreadyPassed(eventTime time.Time) bool {

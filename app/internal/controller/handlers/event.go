@@ -8,7 +8,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strconv"
 
 	"github.com/labstack/echo/v5"
 	"go.uber.org/zap"
@@ -58,7 +57,7 @@ func (h *EventHandler) CreateEvent(c *echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, dto.Msg{Msg: getValidationMsg(err)})
 	}
 
-	id, err := h.eventSvc.CreateEvent(c.Request().Context(), &req, *userID)
+	id, err := h.eventSvc.CreateEvent(c.Request().Context(), req.ToModel(), *userID)
 	if errors.Is(err, exceptions.ErrNotExists) {
 		h.logger.Info("error on create event: reference not found", zap.Error(err))
 		return c.JSON(http.StatusNotFound, dto.Msg{Msg: err.Error()})
@@ -70,7 +69,7 @@ func (h *EventHandler) CreateEvent(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	c.Response().Header().Set("Location", "/api/v1/events/"+strconv.Itoa(id))
+	c.Response().Header().Set("Location", resourceLocation(c, "events", id))
 	return c.JSON(http.StatusCreated, dto.EventIDResponse{ID: id})
 }
 
@@ -107,7 +106,7 @@ func (h *EventHandler) GetEvent(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, event)
+	return c.JSON(http.StatusOK, dto.EventFromModel(event))
 }
 
 // SearchEvents godoc
@@ -136,7 +135,13 @@ func (h *EventHandler) SearchEvents(c *echo.Context) error {
 		h.logger.Info("error on search events: invalid category_id", zap.Error(err))
 		return c.JSON(http.StatusBadRequest, dto.Msg{Msg: "invalid category_id"})
 	}
-	if len(categoryIDs) == 0 {
+	if apiVersion(c) == "v2" {
+		for _, id := range categoryIDs {
+			if id < 1 {
+				return c.JSON(http.StatusUnprocessableEntity, dto.Msg{Msg: "category_id must be positive"})
+			}
+		}
+	} else if len(categoryIDs) == 0 {
 		categoryIDs, err = dto.ParseCategoryIDs(c.QueryParams()["category_ids"])
 		if err != nil {
 			h.logger.Info("error on search events: invalid category_ids", zap.Error(err))
@@ -145,13 +150,13 @@ func (h *EventHandler) SearchEvents(c *echo.Context) error {
 	}
 	req.CategoryIDs = uniquePositiveIDs(categoryIDs)
 
-	resp, err := h.search.SearchEvents(c.Request().Context(), &req)
+	resp, err := h.search.SearchEvents(c.Request().Context(), req.ToModel())
 	if err != nil {
 		h.logger.Error("error on search events", zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return c.JSON(http.StatusOK, dto.EventsFromModels(resp))
 }
 
 // ListCreatedEvents godoc
@@ -175,7 +180,7 @@ func (h *EventHandler) ListCreatedEvents(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return c.JSON(http.StatusOK, dto.EventsFromModels(resp))
 }
 
 // ListJoinedEvents godoc
@@ -199,7 +204,7 @@ func (h *EventHandler) ListJoinedEvents(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return c.JSON(http.StatusOK, dto.EventsFromModels(resp))
 }
 
 // ListCategories godoc
@@ -217,7 +222,7 @@ func (h *EventHandler) ListCategories(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	return c.JSON(http.StatusOK, dto.CategoriesFromModels(resp))
 }
 
 // UpdateEvent godoc
@@ -263,7 +268,7 @@ func (h *EventHandler) UpdateEvent(c *echo.Context) error {
 		req.CategoryIDs = []int{}
 	}
 
-	err = h.eventSvc.UpdateEvent(c.Request().Context(), &req)
+	err = h.eventSvc.UpdateEvent(c.Request().Context(), req.ToModel(), req.CategoryIDs)
 	if errors.Is(err, exceptions.ErrNotExists) {
 		h.logger.Info("error on update event: reference not found", zap.Error(err))
 		return c.JSON(http.StatusNotFound, dto.Msg{Msg: err.Error()})
@@ -455,7 +460,7 @@ func (h *EventHandler) UploadEventImage(c *echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, dto.Msg{Msg: MsgInternalServerError})
 	}
 
-	c.Response().Header().Set("Location", "/api/v1/images/"+strconv.Itoa(imageID))
+	c.Response().Header().Set("Location", resourceLocation(c, "images", imageID))
 	return c.JSON(http.StatusCreated, dto.ImageIDResponse{ID: imageID})
 }
 
@@ -496,8 +501,11 @@ func (h *EventHandler) AddEventCategory(c *echo.Context) error {
 		return err
 	}
 
-	err = h.eventSvc.AddEventCategory(c.Request().Context(), &req)
+	err = h.eventSvc.AddEventCategory(c.Request().Context(), req.EventID, req.CategoryID)
 	if errors.Is(err, exceptions.ErrNotExists) {
+		if apiVersion(c) == "v2" {
+			return c.JSON(http.StatusNotFound, dto.Msg{Msg: err.Error()})
+		}
 		return c.NoContent(http.StatusNoContent)
 	}
 	if errors.Is(err, exceptions.ErrNotFound) {

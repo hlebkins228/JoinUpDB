@@ -77,3 +77,21 @@ func (r *UpdateUserRequest) ToModel() models.User {
 		AvatarID:      r.AvatarID,
 	}
 }
+
+func UserFromModel(user *models.User) *UserResponse {
+	return &UserResponse{
+		ID:                    user.ID,
+		Name:                  user.Name,
+		Age:                   user.Age,
+		Login:                 user.Login,
+		CreatedAt:             user.CreatedAt,
+		City:                  user.City,
+		TelegramLogin:         user.TelegramLogin,
+		AvatarID:              user.AvatarID,
+		Role:                  user.Role,
+		CreatedEventsCount:    user.CreatedEventsCount,
+		JoinedEventsCount:     user.JoinedEventsCount,
+		OrganizerRating:       user.OrganizerRating,
+		OrganizerReviewsCount: user.OrganizerReviewsCount,
+	}
+}

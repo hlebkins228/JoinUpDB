@@ -85,27 +85,34 @@ func (r *UserRepo) GetUser(ctx context.Context, id int) (*models.User, error) {
 		where u.id = $1
 	`
 
-	user := models.User{}
+	var row userRow
+	var created, joined, reviews int
+	var rating *float64
 	err = run.QueryRow(ctx, query, id).Scan(
-		&user.ID,
-		&user.Name,
-		&user.Age,
-		&user.Login,
-		&user.CreatedAt,
-		&user.City,
-		&user.TelegramLogin,
-		&user.AvatarID,
-		&user.Role,
-		&user.CreatedEventsCount,
-		&user.JoinedEventsCount,
-		&user.OrganizerReviewsCount,
-		&user.OrganizerRating,
+		&row.id,
+		&row.name,
+		&row.age,
+		&row.login,
+		&row.createdAt,
+		&row.city,
+		&row.telegramLogin,
+		&row.avatarID,
+		&row.role,
+		&created,
+		&joined,
+		&reviews,
+		&rating,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &user, nil
+	user := row.toModel()
+	user.CreatedEventsCount = created
+	user.JoinedEventsCount = joined
+	user.OrganizerReviewsCount = reviews
+	user.OrganizerRating = rating
+	return user, nil
 }
 
 func (r *UserRepo) GetUserByLogin(ctx context.Context, login string) (*models.User, error) {
@@ -120,24 +127,24 @@ func (r *UserRepo) GetUserByLogin(ctx context.Context, login string) (*models.Us
 		where login = $1
 	`
 
-	user := models.User{}
+	var row userRow
 	err = run.QueryRow(ctx, query, login).Scan(
-		&user.ID,
-		&user.Name,
-		&user.Age,
-		&user.Login,
-		&user.Password,
-		&user.CreatedAt,
-		&user.City,
-		&user.TelegramLogin,
-		&user.AvatarID,
-		&user.Role,
+		&row.id,
+		&row.name,
+		&row.age,
+		&row.login,
+		&row.passwordHash,
+		&row.createdAt,
+		&row.city,
+		&row.telegramLogin,
+		&row.avatarID,
+		&row.role,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &user, nil
+	return row.toModel(), nil
 }
 
 func (r *UserRepo) UpdateUser(ctx context.Context, user *models.User) error {

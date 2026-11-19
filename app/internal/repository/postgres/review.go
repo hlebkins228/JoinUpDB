@@ -74,22 +74,31 @@ func (r *ReviewRepo) ListByEvent(ctx context.Context, eventID int) ([]*models.Re
 
 	reviews := make([]*models.Review, 0)
 	for rows.Next() {
-		review := models.Review{}
+		var review reviewRow
+		var author userSummaryRow
 		err = rows.Scan(
-			&review.ID,
-			&review.EventID,
-			&review.AuthorID,
-			&review.Rating,
-			&review.Text,
-			&review.CreatedAt,
-			&review.Author.ID,
-			&review.Author.Name,
-			&review.Author.AvatarID,
+			&review.id,
+			&review.eventID,
+			&review.authorID,
+			&review.rating,
+			&review.text,
+			&review.createdAt,
+			&author.id,
+			&author.name,
+			&author.avatarID,
 		)
 		if err != nil {
 			return nil, err
 		}
-		reviews = append(reviews, &review)
+		reviews = append(reviews, &models.Review{
+			ID:        review.id,
+			EventID:   review.eventID,
+			AuthorID:  review.authorID,
+			Rating:    review.rating,
+			Text:      review.text,
+			CreatedAt: review.createdAt,
+			Author:    models.ReviewAuthor{ID: author.id, Name: author.name, AvatarID: author.avatarID},
+		})
 	}
 	if rows.Err() != nil {
 		return nil, rows.Err()

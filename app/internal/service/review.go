@@ -1,7 +1,6 @@
 package service
 
 import (
-	"JoinUp/internal/controller/dto"
 	"JoinUp/internal/exceptions"
 	"JoinUp/internal/models"
 	"context"
@@ -20,6 +19,10 @@ const (
 	reviewTextMax   = 2000
 )
 
+type ReviewList struct {
+	Reviews []*models.Review
+}
+
 type ReviewService struct {
 	reviewRepo ReviewRepo
 	eventRepo  EventRepo
@@ -32,7 +35,7 @@ func NewReviewService(uow UOW, reviewRepo ReviewRepo, eventRepo EventRepo) Revie
 
 func (s *ReviewService) CreateReview(
 	ctx context.Context, eventID, authorID, rating int, text string,
-) (*dto.ReviewResponse, error) {
+) (*models.Review, error) {
 	trimmedText := strings.TrimSpace(text)
 	if rating < reviewRatingMin || rating > reviewRatingMax {
 		return nil, fmt.Errorf("%w: rating must be in [%d..%d], got %d",
@@ -96,10 +99,10 @@ func (s *ReviewService) CreateReview(
 		return nil, err
 	}
 
-	return modelToReviewResponseDTO(created), nil
+	return created, nil
 }
 
-func (s *ReviewService) ListReviews(ctx context.Context, eventID int) (*dto.ReviewsResponse, error) {
+func (s *ReviewService) ListReviews(ctx context.Context, eventID int) (*ReviewList, error) {
 	event, err := s.eventRepo.GetEvent(ctx, eventID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("%w: no event with id = %d", exceptions.ErrNotFound, eventID)
@@ -116,26 +119,5 @@ func (s *ReviewService) ListReviews(ctx context.Context, eventID int) (*dto.Revi
 		return nil, err
 	}
 
-	resp := &dto.ReviewsResponse{Reviews: make([]*dto.ReviewResponse, 0, len(reviews))}
-	for _, r := range reviews {
-		resp.Reviews = append(resp.Reviews, modelToReviewResponseDTO(r))
-	}
-
-	return resp, nil
-}
-
-func modelToReviewResponseDTO(r *models.Review) *dto.ReviewResponse {
-	return &dto.ReviewResponse{
-		ID:        r.ID,
-		EventID:   r.EventID,
-		AuthorID:  r.AuthorID,
-		Rating:    r.Rating,
-		Text:      r.Text,
-		CreatedAt: r.CreatedAt,
-		Author: &dto.ReviewAuthor{
-			ID:       r.Author.ID,
-			Name:     r.Author.Name,
-			AvatarID: r.Author.AvatarID,
-		},
-	}
+	return &ReviewList{Reviews: reviews}, nil
 }
